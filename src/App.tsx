@@ -1,12 +1,12 @@
 import { Route, Routes } from 'react-router-dom'
-import { AppHeader } from './components/AppHeader.tsx'
-import { HomePage } from './pages/HomePage.tsx'
-import { SignInPage } from './pages/SignInPage.tsx'
-import { SignUpPage } from './pages/SignUpPage.tsx'
+import { AppHeader } from '@/components/AppHeader.tsx'
+import { HomePage } from '@/pages/HomePage.tsx'
+import { SignInPage } from '@/pages/SignInPage.tsx'
+import { SignUpPage } from '@/pages/SignUpPage.tsx'
 
 function App() {
   return (
-    <div className="app-shell">
+    <div className="min-h-svh">
       <AppHeader />
       <Routes>
         <Route path="/" element={<HomePage />} />

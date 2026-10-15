@@ -1,22 +1,26 @@
 import { ClerkLoading, Show, UserButton } from '@clerk/react'
 import { Link } from 'react-router-dom'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function AppHeader() {
   return (
-    <header className="app-header">
-      <Link className="brand" to="/">
-        <span aria-hidden="true" className="brand-mark">
+    <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-6">
+      <Link className="flex items-center gap-3 text-xl text-foreground no-underline" to="/">
+        <span className="grid size-9 place-items-center rounded-lg bg-secondary text-lg text-secondary-foreground">
           ♞
         </span>
         Chess Club
       </Link>
-      <nav className="header-nav">
+      <nav className="flex items-center gap-4">
         <ClerkLoading>
-          <span className="auth-pending">Loading</span>
+          <span className="text-sm text-muted-foreground">Loading</span>
         </ClerkLoading>
         <Show when="signed-out">
-          <Link to="/sign-in">Sign in</Link>
-          <Link className="button" to="/sign-up">
+          <Link className="font-semibold text-secondary underline underline-offset-4" to="/sign-in">
+            Sign in
+          </Link>
+          <Link className={cn(buttonVariants(), 'hover:bg-secondary')} to="/sign-up">
             Join
           </Link>
         </Show>
