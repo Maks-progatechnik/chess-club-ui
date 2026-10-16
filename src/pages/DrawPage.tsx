@@ -619,10 +619,14 @@ function AddPlayerForm(props: IAddPlayerFormProps) {
   const { onAdd } = props;
   const [name, setName] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextMessage = await onAdd(name);
+    setMessage(nextMessage);
+    if (!nextMessage) {
+      setName("");
+    }
   }
 
   return (
@@ -640,7 +644,7 @@ function AddPlayerForm(props: IAddPlayerFormProps) {
       />
       <button
         className={cn(buttonVariants({ size: "lg" }), "hover:bg-secondary")}
-        disabled={true}
+        disabled
         type="submit"
       >
         Add
