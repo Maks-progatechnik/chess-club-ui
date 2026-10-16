@@ -151,7 +151,7 @@ export function DummyUsers(props: IDummyUsersProps) {
     }
   }
 
-  const rows = dummies.status === 'ready' ? dummies.dummies : []
+  const rows = dummies.status === 'ready' ? sortDummies(dummies.dummies) : []
   const matched = rows.some((dummy) => dummy.mine)
   const allClaimed = rows.length > 0 && rows.every((dummy) => dummy.claimed)
   const count = dummies.status === 'ready' ? (rows.length === 1 ? '1 player' : `${rows.length} players`) : 'Signup sheet'
@@ -189,6 +189,20 @@ export function DummyUsers(props: IDummyUsersProps) {
       {message ? <p className="mt-3 text-secondary">{message}</p> : null}
     </section>
   )
+}
+
+function sortDummies(dummies: IDummyUser[]): IDummyUser[] {
+  return [...dummies].sort((left, right) => dummyRank(left) - dummyRank(right) || left.name.localeCompare(right.name))
+}
+
+function dummyRank(dummy: IDummyUser): number {
+  if (dummy.mine) {
+    return 0
+  }
+  if (dummy.claimed) {
+    return 1
+  }
+  return 2
 }
 
 function DummyTable(props: IDummyTableProps) {

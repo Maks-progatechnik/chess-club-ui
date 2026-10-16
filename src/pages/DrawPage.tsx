@@ -4,32 +4,11 @@ import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { buttonVariants } from "@/components/ui/button";
 import { clubGet, clubPost } from "@/lib/club-api";
-import { chessGameUrl } from "@/lib/chess-game";
 import { playerPath } from "@/lib/players";
-import { drawGroups } from "@/lib/draw";
 import type { DrawGroup, IPairing } from "@/lib/draw";
 import { cn } from "@/lib/utils";
 
-interface IAutumnSeed {
-  name: string;
-  preference?: DrawGroup;
-}
-
-interface IAutumnResponse {
-  advanced: IAutumnSeed[];
-  beginner: IAutumnSeed[];
-  flagged: IAutumnSeed[];
-}
-
-interface IDrawPlayer {
-  id: string;
-  name: string;
-  group: DrawGroup;
-  asked: DrawGroup | null;
-  ratedAdvanced: boolean;
-}
-
-interface IDrawnPairs {
+export interface IDrawnPairs {
   advanced: IPairing[];
   beginner: IPairing[];
 }
@@ -49,7 +28,7 @@ type HistoryState =
   | { status: "ready"; draws: ISavedDraw[] }
   | { status: "error"; message: string };
 
-interface ISignupPlayer {
+export interface ISignupPlayer {
   name: string;
   chessCom: string | null;
   claimed: boolean;
@@ -73,38 +52,22 @@ interface IDrawHistoryProps {
   onAddGame: (game: IAddGame) => Promise<string | null>;
 }
 
-type DrawState =
-  | { status: "loading" }
-  | { status: "ready"; players: IDrawPlayer[] }
-  | { status: "error"; message: string };
-
-interface IPlayerSectionProps {
-  title: string;
-  players: IDrawPlayer[];
-  onToggle: (id: string) => void;
-}
-
-interface IPlayerRowProps {
-  player: IDrawPlayer;
-  onToggle: (id: string) => void;
-}
-
-interface IGroupToggleProps {
-  name: string;
+interface IDrawPair {
   group: DrawGroup;
-  onToggle: () => void;
+  pairing: IPairing;
 }
 
-interface IAddPlayerFormProps {
-  onAdd: (name: string) => Promise<string | null>;
+export interface IPairGame {
+  group: DrawGroup;
+  pairing: IPairing;
+  url: string;
 }
 
 interface IPairSectionProps {
-  title: string;
-  pairs: IPairing[];
+  result: IDrawnPairs;
   roster: ISignupPlayer[];
   pending?: boolean;
-  onAddGame: (pairing: IPairing, url: string) => Promise<string | null>;
+  onAddGame: (game: IPairGame) => Promise<string | null>;
 }
 
 interface IPairRowProps {
@@ -151,7 +114,7 @@ function SignedOutNotice() {
         Draw
       </p>
       <h1 className="mt-3 text-5xl font-bold leading-tight tracking-normal">
-        Sign in to draw pairs.
+        Sign in to see past draws.
       </h1>
       <Link
         className={cn(
@@ -168,50 +131,25 @@ function SignedOutNotice() {
 
 function DrawBoard() {
   const { getToken } = useAuth();
-  const [draw, setDraw] = useState<DrawState>({ status: "loading" });
-  const [pairs, setPairs] = useState<IDrawnPairs | null>(null);
-  const [savedDrawId, setSavedDrawId] = useState<number | null>(null);
   const [roster, setRoster] = useState<ISignupPlayer[]>([]);
   const [history, setHistory] = useState<HistoryState>({ status: "loading" });
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPlayers() {
+    async function loadRoster() {
       try {
         const token = await getToken();
         if (!token) {
-          throw new Error("Clerk has not issued a session token yet.");
+          return;
         }
-
-        const body = await clubGet<IAutumnResponse>(
-          "/tournaments/autumn-2026",
-          token,
-        );
-        if (
-          !Array.isArray(body.advanced) ||
-          !Array.isArray(body.beginner) ||
-          !Array.isArray(body.flagged)
-        ) {
-          throw new Error(
-            "The club API returned an unexpected registration list.",
-          );
-        }
-
         const sheet = await clubGet<IDummiesResponse>("/dummies", token);
         if (!cancelled) {
-          setDraw({ status: "ready", players: seedPlayers(body) });
           setRoster(Array.isArray(sheet.dummies) ? sheet.dummies : []);
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Could not reach the club API.";
-          setDraw({ status: "error", message });
+          setRoster([]);
         }
       }
     }
@@ -248,175 +186,13 @@ function DrawBoard() {
       }
     }
 
-    void loadPlayers();
+    void loadRoster();
     void loadHistory();
 
     return () => {
       cancelled = true;
     };
   }, [getToken]);
-
-  function togglePlayer(id: string) {
-    setDraw((current) => {
-      if (current.status !== "ready") {
-        return current;
-      }
-      return {
-        status: "ready",
-        players: current.players.map((player) =>
-          player.id === id
-            ? { ...player, group: otherGroup(player.group) }
-            : player,
-        ),
-      };
-    });
-    setPairs(null);
-    setSavedDrawId(null);
-  }
-
-  async function addPlayer(name: string): Promise<string | null> {
-    const trimmed = name.replace(/\s+/g, " ").trim();
-    if (!trimmed) {
-      return "Type a name first.";
-    }
-    if (draw.status !== "ready") {
-      return null;
-    }
-    const taken = draw.players.some(
-      (player) => player.name.toLowerCase() === trimmed.toLowerCase(),
-    );
-    if (taken) {
-      return `${trimmed} is already in the draw.`;
-    }
-
-    try {
-      const token = await getToken();
-      if (!token) {
-        return "Clerk has not issued a session token yet.";
-      }
-
-      const saved = await clubPost<{ name: string }>("/dummies", token, {
-        name: trimmed,
-      });
-      setDraw((current) => {
-        if (current.status !== "ready") {
-          return current;
-        }
-        if (
-          current.players.some(
-            (player) => player.name.toLowerCase() === saved.name.toLowerCase(),
-          )
-        ) {
-          return current;
-        }
-        return {
-          status: "ready",
-          players: [
-            ...current.players,
-            {
-              id: crypto.randomUUID(),
-              name: saved.name,
-              group: "beginner",
-              asked: null,
-              ratedAdvanced: false,
-            },
-          ],
-        };
-      });
-      setPairs(null);
-      setSavedDrawId(null);
-      return null;
-    } catch (error) {
-      return error instanceof Error
-        ? error.message
-        : "Could not add this player.";
-    }
-  }
-
-  async function makeDraw() {
-    if (draw.status !== "ready" || saving) {
-      return;
-    }
-    const next = drawGroups(
-      namesIn(draw.players, "advanced"),
-      namesIn(draw.players, "beginner"),
-    );
-    setPairs(next);
-    setSavedDrawId(null);
-    setSaveMessage(null);
-    setSaving(true);
-    const message = await persistDraw(next);
-    setSaveMessage(message);
-    setSaving(false);
-  }
-
-  async function retrySave() {
-    if (!pairs || saving) {
-      return;
-    }
-    setSaveMessage(null);
-    setSaving(true);
-    const message = await persistDraw(pairs);
-    setSaveMessage(message);
-    setSaving(false);
-  }
-
-  async function persistDraw(next: IDrawnPairs): Promise<string | null> {
-    try {
-      const token = await getToken();
-      if (!token) {
-        return "Clerk has not issued a session token yet.";
-      }
-
-      const saved = await clubPost<ISavedDraw>("/draws", token, next);
-      setSavedDrawId(saved.id);
-      setPairs(withGames(saved.result));
-      setHistory((current) => {
-        const previous = current.status === "ready" ? current.draws : [];
-        return {
-          status: "ready",
-          draws: [saved, ...previous.filter((item) => item.id !== saved.id)],
-        };
-      });
-      return null;
-    } catch (error) {
-      return error instanceof Error
-        ? error.message
-        : "Could not save this draw.";
-    }
-  }
-
-  async function addCurrentGame(
-    group: DrawGroup,
-    pairing: IPairing,
-    url: string,
-  ): Promise<string | null> {
-    const game = chessGameUrl(url);
-    if (!game) {
-      return "Paste a Chess.com game link.";
-    }
-    if ((pairing.games ?? []).includes(game)) {
-      return "That game is already on this match.";
-    }
-    if (savedDrawId !== null && pairing.black) {
-      return postGame({ drawId: savedDrawId, group, pairing, url: game });
-    }
-
-    setPairs((current) => {
-      if (!current) {
-        return current;
-      }
-      return {
-        ...current,
-        [group]: current[group].map((pair) =>
-          samePair(pair, pairing)
-            ? { ...pair, games: [...(pair.games ?? []), game] }
-            : pair,
-        ),
-      };
-    });
-    return null;
-  }
 
   async function postGame(game: IAddGame): Promise<string | null> {
     const { drawId, group, pairing, url } = game;
@@ -439,11 +215,14 @@ function DrawBoard() {
       setHistory((current) => {
         const previous = current.status === "ready" ? current.draws : [];
         const rest = previous.filter((draw) => draw.id !== saved.id);
-        return { status: "ready", draws: [saved, ...rest] };
+        return {
+          status: "ready",
+          draws: [
+            { ...saved, result: withGames(saved.result) },
+            ...rest,
+          ],
+        };
       });
-      if (savedDrawId === saved.id) {
-        setPairs(withGames(saved.result));
-      }
       return null;
     } catch (error) {
       return error instanceof Error
@@ -452,100 +231,15 @@ function DrawBoard() {
     }
   }
 
-  const players = draw.status === "ready" ? draw.players : [];
-  const advanced = players.filter((player) => player.group === "advanced");
-  const beginner = players.filter((player) => player.group === "beginner");
-
   return (
     <section>
       <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">
-        {draw.status === "ready" ? `${players.length} players` : "Tournament"}
+        Past draws
       </p>
       <h1 className="mt-3 text-5xl font-bold leading-tight tracking-normal">
         Draw
       </h1>
-      <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-        Beginners play beginners. Advanced play advanced. When both groups have
-        an odd number, the two leftovers play each other. Chess.com sets the
-        groups, and anyone who asked for advanced on the form starts there too.
-      </p>
-      {draw.status === "loading" ? (
-        <p className="mt-6 text-muted-foreground">Loading players…</p>
-      ) : null}
-      {draw.status === "error" ? (
-        <p className="mt-6 text-muted-foreground">{draw.message}</p>
-      ) : null}
-      {draw.status === "ready" ? (
-        <>
-          <AddPlayerForm onAdd={addPlayer} />
-          <div className="mt-10 grid items-start gap-x-12 gap-y-10 md:grid-cols-2">
-            <PlayerSection
-              onToggle={togglePlayer}
-              players={beginner}
-              title="Beginner"
-            />
-            <PlayerSection
-              onToggle={togglePlayer}
-              players={advanced}
-              title="Advanced"
-            />
-          </div>
-          <div className="mt-10 flex flex-wrap items-center gap-3">
-            <button
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "hover:bg-secondary",
-              )}
-              disabled={true}
-              onClick={() => void makeDraw()}
-              type="button"
-            >
-              {saving ? "Saving…" : "Draw pairs"}
-            </button>
-            {pairs && savedDrawId === null && !saving ? (
-              <button
-                className={cn(
-                  buttonVariants({ size: "lg", variant: "outline" }),
-                )}
-                onClick={() => void retrySave()}
-                type="button"
-              >
-                Save this draw
-              </button>
-            ) : null}
-          </div>
-          {saveMessage ? (
-            <p className="mt-3 text-secondary">{saveMessage}</p>
-          ) : null}
-          {pairs ? (
-            <div className="mt-10 grid items-start gap-x-12 gap-y-10 md:grid-cols-2">
-              <PairSection
-                onAddGame={(pairing, url) =>
-                  addCurrentGame("beginner", pairing, url)
-                }
-                pairs={pairs.beginner}
-                pending={saving}
-                roster={roster}
-                title="Beginner pairs"
-              />
-              <PairSection
-                onAddGame={(pairing, url) =>
-                  addCurrentGame("advanced", pairing, url)
-                }
-                pairs={pairs.advanced}
-                pending={saving}
-                roster={roster}
-                title="Advanced pairs"
-              />
-            </div>
-          ) : null}
-        </>
-      ) : null}
-      <DrawHistory
-        history={withoutCurrent(history, savedDrawId)}
-        onAddGame={postGame}
-        roster={roster}
-      />
+      <DrawHistory history={history} onAddGame={postGame} roster={roster} />
     </section>
   );
 }
@@ -554,8 +248,7 @@ function DrawHistory(props: IDrawHistoryProps) {
   const { history, roster, onAddGame } = props;
 
   return (
-    <section className="mt-16 border-t pt-10">
-      <h2 className="text-3xl font-bold tracking-normal">History</h2>
+    <section className="mt-10">
       {history.status === "loading" ? (
         <p className="mt-4 text-muted-foreground">Loading saved draws…</p>
       ) : null}
@@ -571,34 +264,18 @@ function DrawHistory(props: IDrawHistoryProps) {
               <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">
                 {formatSavedAt(saved.createdAt)}
               </p>
-              <div className="mt-4 grid items-start gap-x-12 gap-y-8 md:grid-cols-2">
-                <PairSection
-                  onAddGame={(pairing, url) =>
-                    onAddGame({
-                      drawId: saved.id,
-                      group: "beginner",
-                      pairing,
-                      url,
-                    })
-                  }
-                  pairs={saved.result.beginner}
-                  roster={roster}
-                  title="Beginner pairs"
-                />
-                <PairSection
-                  onAddGame={(pairing, url) =>
-                    onAddGame({
-                      drawId: saved.id,
-                      group: "advanced",
-                      pairing,
-                      url,
-                    })
-                  }
-                  pairs={saved.result.advanced}
-                  roster={roster}
-                  title="Advanced pairs"
-                />
-              </div>
+              <PairSection
+                onAddGame={(game) =>
+                  onAddGame({
+                    drawId: saved.id,
+                    group: game.group,
+                    pairing: game.pairing,
+                    url: game.url,
+                  })
+                }
+                result={saved.result}
+                roster={roster}
+              />
             </article>
           ))
         : null}
@@ -615,147 +292,39 @@ function formatSavedAt(value: string): string {
   });
 }
 
-function AddPlayerForm(props: IAddPlayerFormProps) {
-  const { onAdd } = props;
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+function listedPairs(result: IDrawnPairs): IDrawPair[] {
+  return [
+    ...result.beginner.map((pairing) => ({ group: "beginner" as DrawGroup, pairing })),
+    ...result.advanced.map((pairing) => ({ group: "advanced" as DrawGroup, pairing })),
+  ];
+}
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const nextMessage = await onAdd(name);
-    setMessage(nextMessage);
-    if (!nextMessage) {
-      setName("");
-    }
+export function PairSection(props: IPairSectionProps) {
+  const { result, roster, pending = false, onAddGame } = props;
+  const pairs = listedPairs(result);
+
+  if (pairs.length === 0) {
+    return <p className="mt-4 text-muted-foreground">No pairs in this draw.</p>;
   }
 
   return (
-    <form
-      className="mt-8 flex max-w-xl flex-wrap items-center gap-3"
-      onSubmit={(event) => void submit(event)}
-    >
-      <input
-        aria-label="Add a player"
-        className="h-9 min-w-48 flex-1 rounded-lg border border-border bg-background px-3 text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        disabled
-        onChange={(event) => setName(event.target.value)}
-        placeholder="Add a player"
-        value={name}
-      />
-      <button
-        className={cn(buttonVariants({ size: "lg" }), "hover:bg-secondary")}
-        disabled
-        type="submit"
-      >
-        Add
-      </button>
-      <p className="w-full text-sm text-muted-foreground">
-        Added players are saved on the signup sheet.
-      </p>
-      {message ? <p className="w-full text-secondary">{message}</p> : null}
-    </form>
-  );
-}
-
-function PlayerSection(props: IPlayerSectionProps) {
-  const { title, players, onToggle } = props;
-  const count = players.length === 1 ? "1 player" : `${players.length} players`;
-
-  return (
-    <section>
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="text-3xl font-bold tracking-normal">{title}</h2>
-        <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">
-          {count}
-        </p>
-      </div>
-      {players.length === 0 ? (
-        <p className="mt-4 text-muted-foreground">No one in this group.</p>
-      ) : (
-        <ul className="mt-4">
-          {players.map((player) => (
-            <PlayerRow key={player.id} onToggle={onToggle} player={player} />
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function PlayerRow(props: IPlayerRowProps) {
-  const { player, onToggle } = props;
-  const note = preferenceNote(player);
-
-  return (
-    <li className="flex items-center justify-between gap-4 border-b py-3">
-      <span>
-        <span className="font-bold">{player.name}</span>
-        {note ? (
-          <span className="mt-1 block text-sm text-muted-foreground">
-            {note}
-          </span>
-        ) : null}
-      </span>
-      <GroupToggle
-        group={player.group}
-        name={player.name}
-        onToggle={() => onToggle(player.id)}
-      />
-    </li>
-  );
-}
-
-function GroupToggle(props: IGroupToggleProps) {
-  const { name, group, onToggle } = props;
-  const advanced = group === "advanced";
-
-  return (
-    <button
-      aria-checked={advanced}
-      aria-label={`${name}, ${group}. Switch group.`}
-      className={cn(
-        "inline-flex h-8 items-center gap-2 rounded-full px-3 text-xs font-bold tracking-[0.08em] uppercase",
-        advanced
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted text-foreground",
-      )}
-      onClick={onToggle}
-      role="switch"
-      type="button"
-    >
-      <span
-        className={cn(
-          "size-2.5 rounded-full",
-          advanced ? "bg-secondary" : "bg-background",
-        )}
-      />
-      {advanced ? "Advanced" : "Beginner"}
-    </button>
-  );
-}
-
-function PairSection(props: IPairSectionProps) {
-  const { title, pairs, roster, pending = false, onAddGame } = props;
-
-  return (
-    <section>
-      <h2 className="text-3xl font-bold tracking-normal">{title}</h2>
-      {pairs.length === 0 ? (
-        <p className="mt-4 text-muted-foreground">No pairs in this group.</p>
-      ) : (
-        <div className="mt-4">
-          {pairs.map((pairing) => (
-            <PairRow
-              key={`${pairing.white}-${pairing.black ?? "bye"}`}
-              onAddGame={(url) => onAddGame(pairing, url)}
-              pairing={pairing}
-              pending={pending}
-              roster={roster}
-            />
-          ))}
-        </div>
-      )}
-    </section>
+    <div className="mt-4">
+      {pairs.map((pair) => (
+        <PairRow
+          key={`${pair.group}-${pair.pairing.white}-${pair.pairing.black ?? "bye"}`}
+          onAddGame={(url) =>
+            onAddGame({
+              group: pair.group,
+              pairing: pair.pairing,
+              url,
+            })
+          }
+          pairing={pair.pairing}
+          pending={pending}
+          roster={roster}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -986,19 +555,6 @@ function playerNote(player: ISignupPlayer | undefined): string | null {
   return player.chessCom;
 }
 
-function withoutCurrent(
-  history: HistoryState,
-  savedDrawId: number | null,
-): HistoryState {
-  if (history.status !== "ready" || savedDrawId === null) {
-    return history;
-  }
-  return {
-    status: "ready",
-    draws: history.draws.filter((draw) => draw.id !== savedDrawId),
-  };
-}
-
 function withGames(result: IDrawnPairs): IDrawnPairs {
   return {
     beginner: result.beginner.map((pair) => ({
@@ -1012,52 +568,3 @@ function withGames(result: IDrawnPairs): IDrawnPairs {
   };
 }
 
-function samePair(left: IPairing, right: IPairing): boolean {
-  return (
-    left.white.toLowerCase() === right.white.toLowerCase() &&
-    (left.black ?? "").toLowerCase() === (right.black ?? "").toLowerCase()
-  );
-}
-
-function seedPlayers(body: IAutumnResponse): IDrawPlayer[] {
-  return [
-    ...body.advanced.map((player) => toDrawPlayer(player, true)),
-    ...body.beginner.map((player) => toDrawPlayer(player, false)),
-    ...body.flagged.map((player) => toDrawPlayer(player, false)),
-  ];
-}
-
-function toDrawPlayer(
-  player: IAutumnSeed,
-  ratedAdvanced: boolean,
-): IDrawPlayer {
-  const asked = player.preference === "advanced" ? "advanced" : "beginner";
-  const group = asked === "advanced" || ratedAdvanced ? "advanced" : "beginner";
-  return {
-    id: crypto.randomUUID(),
-    name: player.name,
-    group,
-    asked,
-    ratedAdvanced,
-  };
-}
-
-function preferenceNote(player: IDrawPlayer): string | null {
-  if (player.asked === "advanced" && !player.ratedAdvanced) {
-    return "Asked for advanced";
-  }
-  if (player.asked === "beginner" && player.ratedAdvanced) {
-    return "Asked for beginner";
-  }
-  return null;
-}
-
-function namesIn(players: IDrawPlayer[], group: DrawGroup): string[] {
-  return players
-    .filter((player) => player.group === group)
-    .map((player) => player.name);
-}
-
-function otherGroup(group: DrawGroup): DrawGroup {
-  return group === "advanced" ? "beginner" : "advanced";
-}

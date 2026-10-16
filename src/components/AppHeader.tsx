@@ -54,17 +54,6 @@ export function AppHeader() {
                 isActive ? 'text-secondary underline' : 'text-foreground no-underline',
               )
             }
-            to="/autumn"
-          >
-            Autumn
-          </NavLink>
-          <NavLink
-            className={({ isActive }) =>
-              cn(
-                'font-semibold underline-offset-4',
-                isActive ? 'text-secondary underline' : 'text-foreground no-underline',
-              )
-            }
             to="/draw"
           >
             Draw
