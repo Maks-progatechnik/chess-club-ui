@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
 import { clubGet } from '@/lib/club-api'
+import { playerPath } from '@/lib/players'
 import { cn } from '@/lib/utils'
 
 type RatingMode = 'rapid' | 'blitz' | 'bullet'
@@ -238,7 +239,11 @@ function PlayerRow(props: IPlayerRowProps) {
 
   return (
     <tr className="border-b align-top">
-      <td className="py-3 pr-4 font-bold">{player.name}</td>
+      <td className="py-3 pr-4 font-bold">
+        <Link className="underline-offset-4 hover:text-secondary hover:underline" to={playerPath(player.name)}>
+          {player.name}
+        </Link>
+      </td>
       <td className="py-3 pr-4">
         {player.username && player.profileUrl ? (
           <a

@@ -1,28 +1,35 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { AccountSetup } from '@/components/AccountSetup.tsx'
 import { AppHeader } from '@/components/AppHeader.tsx'
+import { ClubAccountProvider } from '@/components/ClubAccount.tsx'
 import { AccountsPage } from '@/pages/AccountsPage.tsx'
 import { AutumnPage } from '@/pages/AutumnPage.tsx'
 import { DrawPage } from '@/pages/DrawPage.tsx'
 import { HomePage } from '@/pages/HomePage.tsx'
 import { MembersPage } from '@/pages/MembersPage.tsx'
+import { PlayerPage } from '@/pages/PlayerPage.tsx'
 import { SignInPage } from '@/pages/SignInPage.tsx'
 import { SignUpPage } from '@/pages/SignUpPage.tsx'
 
 function App() {
   return (
-    <div className="min-h-svh">
-      <AppHeader />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/members" element={<MembersPage />} />
-        <Route path="/me" element={<AccountsPage />} />
-        <Route path="/accounts" element={<Navigate to="/me" replace />} />
-        <Route path="/autumn" element={<AutumnPage />} />
-        <Route path="/draw" element={<DrawPage />} />
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-      </Routes>
-    </div>
+    <ClubAccountProvider>
+      <div className="min-h-svh">
+        <AppHeader />
+        <AccountSetup />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/members" element={<MembersPage />} />
+          <Route path="/players/:name" element={<PlayerPage />} />
+          <Route path="/me" element={<AccountsPage />} />
+          <Route path="/accounts" element={<Navigate to="/me" replace />} />
+          <Route path="/autumn" element={<AutumnPage />} />
+          <Route path="/draw" element={<DrawPage />} />
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+        </Routes>
+      </div>
+    </ClubAccountProvider>
   )
 }
 

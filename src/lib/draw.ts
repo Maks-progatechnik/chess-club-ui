@@ -3,6 +3,7 @@ export type DrawGroup = 'beginner' | 'advanced'
 export interface IPairing {
   white: string
   black: string | null
+  games: string[]
 }
 
 export function drawGroup(names: string[]): IPairing[] {
@@ -14,7 +15,7 @@ export function drawGroup(names: string[]): IPairing[] {
     if (!white) {
       continue
     }
-    pairs.push({ white, black: order[index + 1] ?? null })
+    pairs.push({ white, black: order[index + 1] ?? null, games: [] })
   }
 
   return pairs

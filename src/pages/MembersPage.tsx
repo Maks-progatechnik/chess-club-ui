@@ -1,8 +1,11 @@
 import { Show, useAuth } from '@clerk/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useClubAccount } from '@/lib/club-account'
+import { DummyUsers } from '@/components/DummyUsers'
 import { buttonVariants } from '@/components/ui/button'
 import { clubGet } from '@/lib/club-api'
+import { playerPath } from '@/lib/players'
 import { cn } from '@/lib/utils'
 
 interface IAccount {
@@ -37,7 +40,7 @@ export function MembersPage() {
         <SignedOutNotice />
       </Show>
       <Show when="signed-in">
-        <AccountRoster />
+        <MemberLists />
       </Show>
     </main>
   )
@@ -55,8 +58,22 @@ function SignedOutNotice() {
   )
 }
 
+function MemberLists() {
+  const { state } = useClubAccount()
+  const canClaim = state.status === 'ready' && state.account !== null
+
+  return (
+    <>
+      <AccountRoster />
+      <DummyUsers canClaim={canClaim} />
+    </>
+  )
+}
+
 function AccountRoster() {
   const { getToken } = useAuth()
+  const { state } = useClubAccount()
+  const accountId = state.status === 'ready' ? (state.account?.id ?? 0) : -1
   const [members, setMembers] = useState<MembersState>({ status: 'loading' })
 
   useEffect(() => {
@@ -90,7 +107,7 @@ function AccountRoster() {
     return () => {
       cancelled = true
     }
-  }, [getToken])
+  }, [accountId, getToken])
 
   const count =
     members.status === 'ready'
@@ -133,7 +150,9 @@ function AccountRow(props: IAccountRowProps) {
     <li className="flex items-center justify-between gap-4 border-b py-3.5">
       <div>
         <p className="font-bold">
-          {account.name} {account.surname}
+          <Link className="underline-offset-4 hover:text-secondary hover:underline" to={playerPath(`${account.name} ${account.surname}`)}>
+            {account.name} {account.surname}
+          </Link>
         </p>
         {account.chessCom ? (
           <a
