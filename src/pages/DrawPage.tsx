@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
-import { clubGet } from '@/lib/club-api'
+import { clubGet, clubPost } from '@/lib/club-api'
 import { drawGroup } from '@/lib/draw'
 import type { DrawGroup, IPairing } from '@/lib/draw'
 import { cn } from '@/lib/utils'
@@ -30,6 +30,25 @@ interface IDrawPlayer {
 interface IDrawnPairs {
   advanced: IPairing[]
   beginner: IPairing[]
+}
+
+interface ISavedDraw {
+  id: number
+  createdAt: string
+  result: IDrawnPairs
+}
+
+interface IDrawsResponse {
+  draws: ISavedDraw[]
+}
+
+type HistoryState =
+  | { status: 'loading' }
+  | { status: 'ready'; draws: ISavedDraw[] }
+  | { status: 'error'; message: string }
+
+interface IDrawHistoryProps {
+  history: HistoryState
 }
 
 type DrawState =
@@ -96,6 +115,8 @@ function DrawBoard() {
   const { getToken } = useAuth()
   const [draw, setDraw] = useState<DrawState>({ status: 'loading' })
   const [pairs, setPairs] = useState<IDrawnPairs | null>(null)
+  const [history, setHistory] = useState<HistoryState>({ status: 'loading' })
+  const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -123,7 +144,31 @@ function DrawBoard() {
       }
     }
 
+    async function loadHistory() {
+      try {
+        const token = await getToken()
+        if (!token) {
+          throw new Error('Clerk has not issued a session token yet.')
+        }
+
+        const body = await clubGet<IDrawsResponse>('/draws', token)
+        if (!Array.isArray(body.draws)) {
+          throw new Error('The club API returned an unexpected draw history.')
+        }
+
+        if (!cancelled) {
+          setHistory({ status: 'ready', draws: body.draws })
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Could not reach the club API.'
+          setHistory({ status: 'error', message })
+        }
+      }
+    }
+
     void loadPlayers()
+    void loadHistory()
 
     return () => {
       cancelled = true
@@ -173,10 +218,34 @@ function DrawBoard() {
     if (draw.status !== 'ready') {
       return
     }
+    setSaveMessage(null)
     setPairs({
       advanced: drawGroup(namesIn(draw.players, 'advanced')),
       beginner: drawGroup(namesIn(draw.players, 'beginner')),
     })
+  }
+
+  async function saveCurrentDraw() {
+    if (!pairs) {
+      return
+    }
+    setSaveMessage(null)
+    try {
+      const token = await getToken()
+      if (!token) {
+        setSaveMessage('Clerk has not issued a session token yet.')
+        return
+      }
+
+      const saved = await clubPost<ISavedDraw>('/draws', token, pairs)
+      setHistory((current) => {
+        const previous = current.status === 'ready' ? current.draws : []
+        return { status: 'ready', draws: [saved, ...previous.filter((draw) => draw.id !== saved.id)] }
+      })
+      setSaveMessage('Saved.')
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Could not save this draw.')
+    }
   }
 
   const players = draw.status === 'ready' ? draw.players : []
@@ -201,13 +270,25 @@ function DrawBoard() {
             <PlayerSection onToggle={togglePlayer} players={beginner} title="Beginner" />
             <PlayerSection onToggle={togglePlayer} players={advanced} title="Advanced" />
           </div>
-          <button
-            className={cn(buttonVariants({ size: 'lg' }), 'mt-10 hover:bg-secondary')}
-            onClick={makeDraw}
-            type="button"
-          >
-            Draw pairs
-          </button>
+          <div className="mt-10 flex flex-wrap items-center gap-3">
+            <button
+              className={cn(buttonVariants({ size: 'lg' }), 'hover:bg-secondary')}
+              onClick={makeDraw}
+              type="button"
+            >
+              Draw pairs
+            </button>
+            {pairs ? (
+              <button
+                className={cn(buttonVariants({ size: 'lg', variant: 'outline' }))}
+                onClick={() => void saveCurrentDraw()}
+                type="button"
+              >
+                Save draw
+              </button>
+            ) : null}
+          </div>
+          {saveMessage ? <p className="mt-3 text-muted-foreground">{saveMessage}</p> : null}
           {pairs ? (
             <div className="mt-10 grid items-start gap-x-12 gap-y-10 md:grid-cols-2">
               <PairSection pairs={pairs.beginner} title="Beginner pairs" />
@@ -216,8 +297,46 @@ function DrawBoard() {
           ) : null}
         </>
       ) : null}
+      <DrawHistory history={history} />
     </section>
   )
+}
+
+function DrawHistory(props: IDrawHistoryProps) {
+  const { history } = props
+
+  return (
+    <section className="mt-16 border-t pt-10">
+      <h2 className="text-3xl font-bold tracking-normal">History</h2>
+      {history.status === 'loading' ? <p className="mt-4 text-muted-foreground">Loading saved draws…</p> : null}
+      {history.status === 'error' ? <p className="mt-4 text-muted-foreground">{history.message}</p> : null}
+      {history.status === 'ready' && history.draws.length === 0 ? (
+        <p className="mt-4 text-muted-foreground">No saved draws.</p>
+      ) : null}
+      {history.status === 'ready'
+        ? history.draws.map((saved) => (
+            <article className="mt-8" key={saved.id}>
+              <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">
+                {formatSavedAt(saved.createdAt)}
+              </p>
+              <div className="mt-4 grid items-start gap-x-12 gap-y-8 md:grid-cols-2">
+                <PairSection pairs={saved.result.beginner} title="Beginner pairs" />
+                <PairSection pairs={saved.result.advanced} title="Advanced pairs" />
+              </div>
+            </article>
+          ))
+        : null}
+    </section>
+  )
+}
+
+function formatSavedAt(value: string): string {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function AddPlayerForm(props: IAddPlayerFormProps) {
