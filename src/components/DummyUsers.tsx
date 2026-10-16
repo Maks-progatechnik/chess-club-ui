@@ -30,6 +30,7 @@ interface IDummyUsersProps {
   compact?: boolean
   titleId?: string
   onClaimed?: () => void
+  onMatched?: (matched: boolean) => void
 }
 
 interface IDummyTableProps {
@@ -51,7 +52,7 @@ interface IDummyRowProps {
 }
 
 export function DummyUsers(props: IDummyUsersProps) {
-  const { canClaim, compact = false, titleId, onClaimed } = props
+  const { canClaim, compact = false, titleId, onClaimed, onMatched } = props
   const { getToken } = useAuth()
   const { claimVersion, noteClaimed } = useClubAccount()
   const [dummies, setDummies] = useState<DummiesState>({ status: 'loading' })
@@ -75,11 +76,13 @@ export function DummyUsers(props: IDummyUsersProps) {
 
         if (!cancelled) {
           setDummies({ status: 'ready', dummies: body.dummies })
+          onMatched?.(body.dummies.some((dummy) => dummy.mine))
         }
       } catch (error) {
         if (!cancelled) {
           const nextMessage = error instanceof Error ? error.message : 'Could not reach the club API.'
           setDummies({ status: 'error', message: nextMessage })
+          onMatched?.(false)
         }
       }
     }
@@ -89,7 +92,7 @@ export function DummyUsers(props: IDummyUsersProps) {
     return () => {
       cancelled = true
     }
-  }, [claimVersion, getToken])
+  }, [claimVersion, getToken, onMatched])
 
   async function claim(name: string) {
     setMessage(null)
@@ -149,6 +152,7 @@ export function DummyUsers(props: IDummyUsersProps) {
   }
 
   const rows = dummies.status === 'ready' ? dummies.dummies : []
+  const matched = rows.some((dummy) => dummy.mine)
   const allClaimed = rows.length > 0 && rows.every((dummy) => dummy.claimed)
   const count = dummies.status === 'ready' ? (rows.length === 1 ? '1 player' : `${rows.length} players`) : 'Signup sheet'
 
@@ -163,14 +167,16 @@ export function DummyUsers(props: IDummyUsersProps) {
         Dummy users
       </h2>
       <p className="mt-2 max-w-2xl text-muted-foreground">
-        The signup sheet. Mark the row that is you.
+        {compact && matched
+          ? 'This row matches your account. Confirm if that is you.'
+          : 'The signup sheet. Mark the row that is you.'}
       </p>
       {dummies.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading the signup sheet…</p> : null}
       {dummies.status === 'error' ? <p className="mt-6 text-muted-foreground">{dummies.message}</p> : null}
-      {dummies.status === 'ready' && compact && allClaimed ? (
+      {dummies.status === 'ready' && compact && allClaimed && !matched ? (
         <p className="mt-4 text-muted-foreground">Everyone on the signup sheet already has an account.</p>
       ) : null}
-      {dummies.status === 'ready' && !allClaimed ? (
+      {dummies.status === 'ready' && (!allClaimed || (compact && matched)) ? (
         <DummyTable
           canClaim={canClaim}
           compact={compact}

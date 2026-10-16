@@ -104,13 +104,21 @@ interface IMarkSheetProps {
 
 function MarkSheet(props: IMarkSheetProps) {
   const { onDone } = props
+  const [matched, setMatched] = useState(false)
 
   return (
     <section>
-        <DummyUsers canClaim compact onClaimed={onDone} titleId="account-setup-title" />
-      <button className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'mt-6')} onClick={onDone} type="button">
-        I'm not on this list
-      </button>
+      <DummyUsers canClaim compact onClaimed={onDone} onMatched={setMatched} titleId="account-setup-title" />
+      <div className="mt-6 flex flex-wrap gap-3">
+        {matched ? (
+          <button className={cn(buttonVariants({ size: 'lg' }), 'hover:bg-secondary')} onClick={onDone} type="button">
+            Confirm
+          </button>
+        ) : null}
+        <button className={cn(buttonVariants({ size: 'lg', variant: 'outline' }))} onClick={onDone} type="button">
+          I'm not on this list
+        </button>
+      </div>
     </section>
   )
 }
