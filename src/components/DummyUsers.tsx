@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
-import { clubGet, clubPost } from '@/lib/club-api'
+import { clubDelete, clubGet, clubPost } from '@/lib/club-api'
 import { useClubAccount } from '@/lib/club-account'
 import { playerPath } from '@/lib/players'
 import { cn } from '@/lib/utils'
@@ -38,13 +38,16 @@ interface IDummyTableProps {
   compact: boolean
   pendingName: string | null
   onClaim: (name: string) => void
+  onDelete: (name: string) => void
 }
 
 interface IDummyRowProps {
   dummy: IDummyUser
   showClaim: boolean
+  showDelete: boolean
   pending: boolean
   onClaim: (name: string) => void
+  onDelete: (name: string) => void
 }
 
 export function DummyUsers(props: IDummyUsersProps) {
@@ -117,8 +120,41 @@ export function DummyUsers(props: IDummyUsersProps) {
     }
   }
 
+  async function remove(name: string) {
+    setMessage(null)
+    setPendingName(name)
+    try {
+      const token = await getToken()
+      if (!token) {
+        setMessage('Clerk has not issued a session token yet.')
+        return
+      }
+
+      await clubDelete<{ name: string }>('/dummies', token, { name })
+      setDummies((current) => {
+        if (current.status !== 'ready') {
+          return current
+        }
+        return {
+          status: 'ready',
+          dummies: current.dummies.filter((dummy) => dummy.name.toLowerCase() !== name.toLowerCase()),
+        }
+      })
+      noteClaimed()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Could not delete that player.')
+    } finally {
+      setPendingName(null)
+    }
+  }
+
   const rows = dummies.status === 'ready' ? dummies.dummies : []
+  const allClaimed = rows.length > 0 && rows.every((dummy) => dummy.claimed)
   const count = dummies.status === 'ready' ? (rows.length === 1 ? '1 player' : `${rows.length} players`) : 'Signup sheet'
+
+  if (!compact && dummies.status === 'ready' && allClaimed) {
+    return null
+  }
 
   return (
     <section className={compact ? '' : 'mt-16 border-t pt-10'}>
@@ -131,12 +167,16 @@ export function DummyUsers(props: IDummyUsersProps) {
       </p>
       {dummies.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading the signup sheet…</p> : null}
       {dummies.status === 'error' ? <p className="mt-6 text-muted-foreground">{dummies.message}</p> : null}
-      {dummies.status === 'ready' ? (
+      {dummies.status === 'ready' && compact && allClaimed ? (
+        <p className="mt-4 text-muted-foreground">Everyone on the signup sheet already has an account.</p>
+      ) : null}
+      {dummies.status === 'ready' && !allClaimed ? (
         <DummyTable
           canClaim={canClaim}
           compact={compact}
           dummies={rows}
           onClaim={(name) => void claim(name)}
+          onDelete={(name) => void remove(name)}
           pendingName={pendingName}
         />
       ) : null}
@@ -146,7 +186,7 @@ export function DummyUsers(props: IDummyUsersProps) {
 }
 
 function DummyTable(props: IDummyTableProps) {
-  const { dummies, canClaim, compact, pendingName, onClaim } = props
+  const { dummies, canClaim, compact, pendingName, onClaim, onDelete } = props
   const mine = dummies.some((dummy) => dummy.mine)
 
   if (dummies.length === 0) {
@@ -154,7 +194,12 @@ function DummyTable(props: IDummyTableProps) {
   }
 
   return (
-    <div className={cn('mt-4 overflow-x-auto', compact && 'max-h-80 overflow-y-auto')}>
+    <div
+      className={cn(
+        'mt-4 max-w-full overflow-x-auto overflow-y-hidden',
+        compact && 'max-h-80 overflow-y-auto',
+      )}
+    >
       <table className="w-full text-left">
         <thead>
           <tr className="border-b text-xs tracking-[0.14em] text-secondary uppercase">
@@ -172,8 +217,10 @@ function DummyTable(props: IDummyTableProps) {
               dummy={dummy}
               key={dummy.name}
               onClaim={onClaim}
+              onDelete={onDelete}
               pending={pendingName === dummy.name}
               showClaim={canClaim && !mine && !dummy.claimed}
+              showDelete={!compact}
             />
           ))}
         </tbody>
@@ -183,7 +230,7 @@ function DummyTable(props: IDummyTableProps) {
 }
 
 function DummyRow(props: IDummyRowProps) {
-  const { dummy, showClaim, pending, onClaim } = props
+  const { dummy, showClaim, showDelete, pending, onClaim, onDelete } = props
 
   return (
     <tr className="border-b align-middle">
@@ -208,9 +255,57 @@ function DummyRow(props: IDummyRowProps) {
         )}
       </td>
       <td className="py-3 text-right">
-        <ClaimMark dummy={dummy} onClaim={onClaim} pending={pending} showClaim={showClaim} />
+        <div className="flex items-center justify-end gap-3">
+          {showDelete ? <DeleteDummy disabled={pending} name={dummy.name} onDelete={onDelete} /> : null}
+          <ClaimMark dummy={dummy} onClaim={onClaim} pending={pending} showClaim={showClaim} />
+        </div>
       </td>
     </tr>
+  )
+}
+
+interface IDeleteDummyProps {
+  name: string
+  disabled: boolean
+  onDelete: (name: string) => void
+}
+
+function DeleteDummy(props: IDeleteDummyProps) {
+  const { name, disabled, onDelete } = props
+  const [confirming, setConfirming] = useState(false)
+
+  if (!confirming) {
+    return (
+      <button
+        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+        disabled={disabled}
+        onClick={() => setConfirming(true)}
+        type="button"
+      >
+        Delete
+      </button>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        className={cn(buttonVariants({ variant: 'destructive', size: 'sm' }))}
+        disabled={disabled}
+        onClick={() => onDelete(name)}
+        type="button"
+      >
+        Remove
+      </button>
+      <button
+        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+        disabled={disabled}
+        onClick={() => setConfirming(false)}
+        type="button"
+      >
+        Keep
+      </button>
+    </span>
   )
 }
 

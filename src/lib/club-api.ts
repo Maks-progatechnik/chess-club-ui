@@ -5,7 +5,7 @@ interface IApiError {
 interface IClubRequest {
   path: string
   token: string
-  method: 'GET' | 'POST' | 'PUT'
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
 }
 
@@ -23,6 +23,10 @@ export function clubPut<T>(path: string, token: string, body: unknown): Promise<
   return clubRequest<T>({ path, token, method: 'PUT', body })
 }
 
+export function clubDelete<T>(path: string, token: string, body: unknown): Promise<T> {
+  return clubRequest<T>({ path, token, method: 'DELETE', body })
+}
+
 async function clubRequest<T>(request: IClubRequest): Promise<T> {
   const { path, token, method, body } = request
   const response = await fetch(`${apiUrl}${path}`, {
@@ -34,10 +38,24 @@ async function clubRequest<T>(request: IClubRequest): Promise<T> {
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
+  const payload = await readJson(response)
   if (!response.ok) {
-    const errorBody = (await response.json()) as IApiError
-    throw new Error(errorBody.error ?? 'The club API did not accept this session.')
+    const errorBody = payload as IApiError | null
+    throw new Error(errorBody?.error ?? 'The club API did not accept this session.')
   }
 
-  return (await response.json()) as T
+  return payload as T
+}
+
+async function readJson(response: Response): Promise<unknown> {
+  const text = await response.text()
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    throw new Error('The club API returned an unexpected response.')
+  }
 }

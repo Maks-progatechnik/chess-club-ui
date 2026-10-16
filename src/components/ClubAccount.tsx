@@ -57,7 +57,7 @@ export function ClubAccountProvider(props: IClubAccountProviderProps) {
     return () => {
       cancelled = true
     }
-  }, [getToken, isLoaded, isSignedIn, userId])
+  }, [claimVersion, getToken, isLoaded, isSignedIn, userId])
 
   async function saveAccount(values: IAccountFormValues): Promise<string | null> {
     if (!userId) {
