@@ -1,36 +1,33 @@
 import { Show, useAuth } from '@clerk/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { clubGet } from '@/lib/club-api'
 import { buttonVariants } from '@/components/ui/button'
+import { clubGet } from '@/lib/club-api'
 import { cn } from '@/lib/utils'
 
-interface IMember {
-  id: string
+interface IAccount {
+  id: number
   name: string
-  email: string | null
-  imageUrl: string
-  joinedAt: string
+  surname: string
+  chessCom: string | null
+  elo: number
 }
 
-interface IMembersResponse {
-  members: IMember[]
+interface IAccountsResponse {
+  accounts: IAccount[]
 }
 
 type MembersState =
   | { status: 'loading' }
-  | { status: 'ready'; currentUserId: string; members: IMember[] }
+  | { status: 'ready'; accounts: IAccount[] }
   | { status: 'error'; message: string }
 
-interface IMemberListProps {
-  currentUserId: string
-  members: IMember[]
+interface IAccountListProps {
+  accounts: IAccount[]
 }
 
-interface IMemberRowProps {
-  isCurrentUser: boolean
-  member: IMember
+interface IAccountRowProps {
+  account: IAccount
 }
 
 export function MembersPage() {
@@ -40,7 +37,7 @@ export function MembersPage() {
         <SignedOutNotice />
       </Show>
       <Show when="signed-in">
-        <MembersRoster />
+        <AccountRoster />
       </Show>
     </main>
   )
@@ -58,27 +55,27 @@ function SignedOutNotice() {
   )
 }
 
-function MembersRoster() {
-  const { getToken, userId } = useAuth()
+function AccountRoster() {
+  const { getToken } = useAuth()
   const [members, setMembers] = useState<MembersState>({ status: 'loading' })
 
   useEffect(() => {
     let cancelled = false
 
-    async function loadMembers() {
+    async function loadAccounts() {
       try {
         const token = await getToken()
-        if (!token || !userId) {
+        if (!token) {
           throw new Error('Clerk has not issued a session token yet.')
         }
 
-        const body = await clubGet<IMembersResponse>('/members', token)
-        if (!Array.isArray(body.members)) {
-          throw new Error('The club API returned an unexpected member list.')
+        const body = await clubGet<IAccountsResponse>('/accounts', token)
+        if (!Array.isArray(body.accounts)) {
+          throw new Error('The club API returned an unexpected account list.')
         }
 
         if (!cancelled) {
-          setMembers({ status: 'ready', currentUserId: userId, members: body.members })
+          setMembers({ status: 'ready', accounts: body.accounts })
         }
       } catch (error) {
         if (!cancelled) {
@@ -88,71 +85,70 @@ function MembersRoster() {
       }
     }
 
-    void loadMembers()
+    void loadAccounts()
 
     return () => {
       cancelled = true
     }
-  }, [getToken, userId])
+  }, [getToken])
 
   const count =
     members.status === 'ready'
-      ? members.members.length === 1
-        ? '1 member'
-        : `${members.members.length} members`
+      ? members.accounts.length === 1
+        ? '1 account'
+        : `${members.accounts.length} accounts`
       : 'Members'
 
   return (
     <section>
       <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">{count}</p>
       <h1 className="mt-3 text-5xl font-bold leading-tight tracking-normal">Members</h1>
-      {members.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading the club…</p> : null}
+      {members.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading accounts…</p> : null}
       {members.status === 'error' ? <p className="mt-6 text-muted-foreground">{members.message}</p> : null}
-      {members.status === 'ready' ? (
-        <MemberList currentUserId={members.currentUserId} members={members.members} />
-      ) : null}
+      {members.status === 'ready' ? <AccountList accounts={members.accounts} /> : null}
     </section>
   )
 }
 
-function MemberList(props: IMemberListProps) {
-  const { currentUserId, members } = props
+function AccountList(props: IAccountListProps) {
+  const { accounts } = props
+
+  if (accounts.length === 0) {
+    return <p className="mt-8 text-muted-foreground">No accounts yet.</p>
+  }
 
   return (
     <ul className="mt-8 border-t">
-      {members.map((member) => (
-        <MemberRow isCurrentUser={member.id === currentUserId} key={member.id} member={member} />
+      {accounts.map((account) => (
+        <AccountRow account={account} key={account.id} />
       ))}
     </ul>
   )
 }
 
-function MemberRow(props: IMemberRowProps) {
-  const { isCurrentUser, member } = props
-  const joined = new Date(member.joinedAt).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+function AccountRow(props: IAccountRowProps) {
+  const { account } = props
 
   return (
-    <li className="flex items-center gap-3 border-b py-3.5">
-      <Avatar className="size-11">
-        <AvatarImage alt="" src={member.imageUrl} />
-        <AvatarFallback>{member.name.slice(0, 1)}</AvatarFallback>
-      </Avatar>
+    <li className="flex items-center justify-between gap-4 border-b py-3.5">
       <div>
         <p className="font-bold">
-          {member.name}
-          {isCurrentUser ? (
-            <span className="ml-2 text-xs tracking-[0.12em] text-secondary uppercase">You</span>
-          ) : null}
+          {account.name} {account.surname}
         </p>
-        {member.email && member.email !== member.name ? (
-          <p className="text-sm text-muted-foreground">{member.email}</p>
-        ) : null}
-        <p className="text-sm text-muted-foreground">Joined {joined}</p>
+        {account.chessCom ? (
+          <a
+            className="text-sm text-secondary underline underline-offset-4"
+            href={`https://www.chess.com/member/${account.chessCom}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {account.chessCom}
+          </a>
+        ) : (
+          <p className="text-sm text-muted-foreground">No Chess.com account</p>
+        )}
       </div>
+      <p className="text-sm text-muted-foreground">Elo {account.elo}</p>
     </li>
   )
 }
