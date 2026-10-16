@@ -6,7 +6,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { clubGet, clubPost } from '@/lib/club-api'
 import { chessGameUrl } from '@/lib/chess-game'
 import { playerPath } from '@/lib/players'
-import { drawGroup } from '@/lib/draw'
+import { drawGroups } from '@/lib/draw'
 import type { DrawGroup, IPairing } from '@/lib/draw'
 import { cn } from '@/lib/utils'
 
@@ -291,10 +291,7 @@ function DrawBoard() {
     if (draw.status !== 'ready' || saving) {
       return
     }
-    const next = {
-      advanced: drawGroup(namesIn(draw.players, 'advanced')),
-      beginner: drawGroup(namesIn(draw.players, 'beginner')),
-    }
+    const next = drawGroups(namesIn(draw.players, 'advanced'), namesIn(draw.players, 'beginner'))
     setPairs(next)
     setSavedDrawId(null)
     setSaveMessage(null)
@@ -400,7 +397,7 @@ function DrawBoard() {
       </p>
       <h1 className="mt-3 text-5xl font-bold leading-tight tracking-normal">Draw</h1>
       <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-        Beginners play beginners. Advanced play advanced. Chess.com sets the groups, and anyone who asked for advanced on the form starts there too.
+        Beginners play beginners. Advanced play advanced. When both groups have an odd number, the two leftovers play each other. Chess.com sets the groups, and anyone who asked for advanced on the form starts there too.
       </p>
       {draw.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading players…</p> : null}
       {draw.status === 'error' ? <p className="mt-6 text-muted-foreground">{draw.message}</p> : null}
@@ -647,11 +644,14 @@ function PairRow(props: IPairRowProps) {
   return (
     <div className="border-b py-3">
       <div className="flex items-start justify-between gap-4">
-        <p>
-          <PlayerLabel name={pairing.white} roster={roster} />
-          <span className="mx-3 text-xs font-bold tracking-[0.14em] text-secondary uppercase">vs</span>
-          <PlayerLabel name={pairing.black} roster={roster} />
-        </p>
+        <div>
+          <p>
+            <PlayerLabel name={pairing.white} roster={roster} />
+            <span className="mx-3 text-xs font-bold tracking-[0.14em] text-secondary uppercase">vs</span>
+            <PlayerLabel name={pairing.black} roster={roster} />
+          </p>
+          {pairing.across ? <p className="mt-1 text-sm text-muted-foreground">Across groups</p> : null}
+        </div>
         <button
           className={cn(buttonVariants({ size: 'sm', variant: 'outline' }), 'shrink-0')}
           disabled={pending}
