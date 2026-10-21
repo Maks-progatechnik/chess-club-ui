@@ -46,25 +46,35 @@ function StatBlock(props: IStatBlockProps) {
 }
 
 function openingValue(openings: IOpeningCount[]): string {
-  if (openings.length === 0) {
+  const leaders = tiedLeaders(openings)
+  if (leaders.length === 0) {
     return 'Not yet'
   }
-  if (openings.length === 1) {
-    return openings[0]?.name ?? 'Not yet'
+  if (leaders.length === 1) {
+    return leaders[0]?.name ?? 'Not yet'
   }
-  return `${openings.length} tied`
+  return 'Tied'
 }
 
 function openingDetail(openings: IOpeningCount[]): string {
-  const first = openings[0]
+  const leaders = tiedLeaders(openings)
+  const first = leaders[0]
   if (!first) {
     return 'No named opening yet.'
   }
   const count = first.games === 1 ? '1 game' : `${first.games} games`
-  if (openings.length === 1) {
+  if (leaders.length === 1) {
     return count
   }
-  return `${openings.map((opening) => opening.name).join(', ')} · ${count} each`
+  return `${leaders.length} openings, ${count} each`
+}
+
+function tiedLeaders(openings: IOpeningCount[]): IOpeningCount[] {
+  const best = openings[0]?.games ?? 0
+  if (best === 0) {
+    return []
+  }
+  return openings.filter((opening) => opening.games === best)
 }
 
 function resultsValue(stats: IClubStats): string {

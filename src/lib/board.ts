@@ -66,6 +66,9 @@ export interface IAchievements {
 export interface IOpeningCount {
   name: string
   games: number
+  whiteWins: number
+  blackWins: number
+  draws: number
 }
 
 export interface IClubStats {

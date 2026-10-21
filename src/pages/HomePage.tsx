@@ -2,6 +2,7 @@ import { Show, useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { Achievements } from '@/components/Achievements'
 import { ClubStats } from '@/components/ClubStats'
+import { Openings } from '@/components/Openings'
 import { DrawRound } from '@/components/DrawRound'
 import { Leaderboard } from '@/components/Leaderboard'
 import { buttonVariants } from '@/components/ui/button'
@@ -71,8 +72,9 @@ function SignedInHome() {
         </div>
       ) : null}
       {board.status === 'ready' && board.board.stats ? (
-        <div className="mt-8">
+        <div className="mt-8 grid gap-8">
           <ClubStats stats={board.board.stats} />
+          <Openings openings={board.board.stats.openings} />
         </div>
       ) : null}
       {board.status === 'ready' && board.board.achievements ? (
