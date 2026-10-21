@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 
 export interface IDummyUser {
   name: string
-  level: string
   chessCom: string | null
   timeControl: string | null
   claimed: boolean
@@ -224,7 +223,6 @@ function DummyTable(props: IDummyTableProps) {
         <thead>
           <tr className="border-b text-xs tracking-[0.14em] text-secondary uppercase">
             <th className="py-3 pr-4 font-bold">Name</th>
-            <th className="py-3 pr-4 font-bold">Level</th>
             <th className="py-3 pr-4 font-bold">Chess.com</th>
             <th className="py-3 font-bold">
               <span className="sr-only">Mark</span>
@@ -259,7 +257,6 @@ function DummyRow(props: IDummyRowProps) {
           {dummy.name}
         </Link>
       </td>
-      <td className="py-3 pr-4">{dummy.level}</td>
       <td className="py-3 pr-4">
         {dummy.chessCom ? (
           <a

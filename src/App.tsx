@@ -7,6 +7,7 @@ import { DrawPage } from '@/pages/DrawPage.tsx'
 import { HomePage } from '@/pages/HomePage.tsx'
 import { MembersPage } from '@/pages/MembersPage.tsx'
 import { PlayerPage } from '@/pages/PlayerPage.tsx'
+import { RulesPage } from '@/pages/RulesPage.tsx'
 import { SignInPage } from '@/pages/SignInPage.tsx'
 import { SignUpPage } from '@/pages/SignUpPage.tsx'
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/me" element={<AccountsPage />} />
           <Route path="/accounts" element={<Navigate to="/me" replace />} />
           <Route path="/draw" element={<DrawPage />} />
+          <Route path="/rules" element={<RulesPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />
         </Routes>
