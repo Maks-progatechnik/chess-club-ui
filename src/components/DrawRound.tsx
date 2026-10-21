@@ -2,6 +2,7 @@ import { ChevronDown, CircleCheck, Crown, ExternalLink, Plus, Swords } from 'luc
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { GameBoard } from '@/components/GameBoard'
 import { buttonVariants } from '@/components/ui/button'
 import { pointLabel } from '@/lib/board'
 import type { IAddMatchGame, IBoardDraw, IBoardGame, IBoardPair, ISignupPlayer } from '@/lib/board'
@@ -356,13 +357,14 @@ function StatusBadge(props: IStatusBadgeProps) {
 
 function GameRows(props: IGameRowsProps) {
   const { games } = props
+  const [openUrl, setOpenUrl] = useState<string | null>(null)
 
   return (
     <ul>
-      {games.map((game) => (
-        <li className="flex items-start gap-2 py-2" key={game.url}>
-          <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-          <div className="min-w-0">
+      {games.map((game) => {
+        const open = openUrl === game.url
+        const details = (
+          <>
             <p className="text-sm font-bold">{gameLine(game)}</p>
             {game.summary ? <p className="text-sm text-muted-foreground">{game.summary}</p> : null}
             <a
@@ -374,9 +376,35 @@ function GameRows(props: IGameRowsProps) {
               <ExternalLink className="size-3.5" />
               {game.url.replace('https://www.chess.com', 'chess.com')}
             </a>
-          </div>
-        </li>
-      ))}
+          </>
+        )
+        const action = (
+          <button
+            aria-expanded={open}
+            className="text-sm font-bold text-foreground underline underline-offset-4"
+            onClick={() => setOpenUrl(open ? null : game.url)}
+            type="button"
+          >
+            {open ? 'Hide board' : 'Show board'}
+          </button>
+        )
+
+        return (
+          <li className="flex items-start gap-2 py-2" key={game.url}>
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            {open ? (
+              <div className="min-w-0 flex-1">
+                <GameBoard action={action} boardId={game.url} details={details} moveList={game.moveList} />
+              </div>
+            ) : (
+              <>
+                <div className="min-w-0 flex-1">{details}</div>
+                {action}
+              </>
+            )}
+          </li>
+        )
+      })}
     </ul>
   )
 }

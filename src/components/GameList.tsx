@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { GameBoard } from '@/components/GameBoard'
 import { playerPath } from '@/lib/players'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +19,7 @@ export interface IClubGame {
   timeControl: string | null
   opening: string | null
   playedAt: string | null
+  moveList: string | null
   yours: boolean
 }
 
@@ -44,11 +47,12 @@ export function GameList(props: IGameListProps) {
 
 function GameRow(props: IGameRowProps) {
   const { game, voice } = props
+  const [open, setOpen] = useState(false)
   const details = [game.timeControl, game.opening, formatPlayedAt(game.playedAt)].filter(Boolean)
   const colorNote = game.yours ? (voice === 'you' ? `you had ${game.color}` : `played ${game.color}`) : null
 
-  return (
-    <article className="border-b py-4">
+  const body = (
+    <>
       <p className="text-lg font-bold">
         <span className={cn(game.yours && game.outcome === 'loss' && 'text-secondary')}>{game.summary}</span>
         <span className="mx-3 text-xs font-bold tracking-[0.14em] text-secondary uppercase">vs</span>
@@ -56,31 +60,41 @@ function GameRow(props: IGameRowProps) {
           {game.opponent}
         </Link>
       </p>
-      {game.white && game.black ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {playerLabel(game.white, game.whiteRating, game.whiteChange)}
-          <span className="mx-2 text-xs font-bold tracking-[0.14em] text-secondary uppercase">vs</span>
-          {playerLabel(game.black, game.blackRating, game.blackChange)}
-          {colorNote ? ` · ${colorNote}` : ''}
-        </p>
-      ) : null}
+      {colorNote ? <p className="mt-2 text-sm text-muted-foreground">{colorNote}</p> : null}
       {details.length > 0 ? <p className="mt-1 text-sm text-muted-foreground">{details.join(' · ')}</p> : null}
-      <a className="mt-2 inline-block text-sm text-secondary underline underline-offset-4" href={game.url} rel="noreferrer" target="_blank">
+      <a
+        className="mt-2 inline-block text-sm text-secondary underline underline-offset-4"
+        href={game.url}
+        rel="noreferrer"
+        target="_blank"
+      >
         {game.url.replace('https://www.chess.com', 'chess.com')}
       </a>
+    </>
+  )
+  const action = (
+    <button
+      aria-expanded={open}
+      className="text-sm font-bold underline underline-offset-4"
+      onClick={() => setOpen((current) => !current)}
+      type="button"
+    >
+      {open ? 'Hide board' : 'Show board'}
+    </button>
+  )
+
+  return (
+    <article className="border-b py-4">
+      {open ? (
+        <GameBoard action={action} boardId={game.url} details={body} moveList={game.moveList} />
+      ) : (
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">{body}</div>
+          {action}
+        </div>
+      )}
     </article>
   )
-}
-
-function playerLabel(name: string, rating: number | null, change: number | null): string {
-  const parts = [name]
-  if (rating !== null) {
-    parts.push(String(rating))
-  }
-  if (change !== null && change !== 0) {
-    parts.push(change > 0 ? `+${change}` : String(change))
-  }
-  return parts.join(' ')
 }
 
 function formatPlayedAt(value: string | null): string | null {

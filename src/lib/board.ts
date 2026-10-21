@@ -8,6 +8,7 @@ export interface IBoardGame {
   winnerName: string | null
   summary: string | null
   playedAt: string | null
+  moveList: string | null
 }
 
 export interface IBoardPair {
