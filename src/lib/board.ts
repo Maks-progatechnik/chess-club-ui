@@ -9,6 +9,7 @@ export interface IBoardGame {
   summary: string | null
   playedAt: string | null
   moveList: string | null
+  opening: string | null
 }
 
 export interface IBoardPair {
@@ -42,9 +43,45 @@ export interface IStanding {
   gameWins: number
 }
 
+export interface IRecordMark {
+  names: string[]
+  playedAt: string | null
+  url: string | null
+  moves: number | null
+  games: number | null
+  deficit: number | null
+  opponent: string | null
+  current: boolean
+}
+
+export interface IAchievements {
+  firstGame: IRecordMark[]
+  quickestWin: IRecordMark[]
+  longestGame: IRecordMark[]
+  mostGames: IRecordMark[]
+  recovery: IRecordMark[]
+  tournament: IRecordMark[]
+}
+
+export interface IOpeningCount {
+  name: string
+  games: number
+}
+
+export interface IClubStats {
+  members: number
+  games: number
+  whiteWins: number
+  blackWins: number
+  draws: number
+  openings: IOpeningCount[]
+}
+
 export interface IClubBoard {
   draws: IBoardDraw[]
   standings: IStanding[]
+  achievements?: IAchievements
+  stats?: IClubStats
 }
 
 export interface ISignupPlayer {

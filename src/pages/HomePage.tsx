@@ -1,5 +1,7 @@
 import { Show, useUser } from '@clerk/react'
 import { Link } from 'react-router-dom'
+import { Achievements } from '@/components/Achievements'
+import { ClubStats } from '@/components/ClubStats'
 import { DrawRound } from '@/components/DrawRound'
 import { Leaderboard } from '@/components/Leaderboard'
 import { buttonVariants } from '@/components/ui/button'
@@ -66,6 +68,16 @@ function SignedInHome() {
               <p className="text-muted-foreground">No draw yet.</p>
             )}
           </div>
+        </div>
+      ) : null}
+      {board.status === 'ready' && board.board.stats ? (
+        <div className="mt-8">
+          <ClubStats stats={board.board.stats} />
+        </div>
+      ) : null}
+      {board.status === 'ready' && board.board.achievements ? (
+        <div className="mt-8">
+          <Achievements achievements={board.board.achievements} />
         </div>
       ) : null}
     </section>
