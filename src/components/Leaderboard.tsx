@@ -1,17 +1,37 @@
 import { Trophy } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import type { IStanding } from '@/lib/board'
 import { playerPath } from '@/lib/players'
 import { cn } from '@/lib/utils'
 
+interface ILeaderboardRow {
+  name: string
+  points: number
+  played: number
+  wins: number
+  draws: number
+  losses: number
+  elo?: number
+}
+
+interface ILeaderboardLink {
+  to: string
+  label: string
+}
+
 interface ILeaderboardProps {
-  standings: IStanding[]
+  standings: ILeaderboardRow[]
+  kicker?: string
+  heading?: string
+  scoring?: string
+  showElo?: boolean
+  more?: ILeaderboardLink
 }
 
 interface IStandingRowProps {
-  standing: IStanding
+  standing: ILeaderboardRow
   rank: number
   leader: boolean
+  showElo: boolean
 }
 
 interface ITableStatProps {
@@ -33,7 +53,7 @@ const columns: ITableColumn[] = [
 ]
 
 export function Leaderboard(props: ILeaderboardProps) {
-  const { standings } = props
+  const { standings, kicker = 'Matches', heading = 'Leaderboard', scoring, showElo = false, more } = props
   const top = standings[0]?.points ?? 0
 
   return (
@@ -43,8 +63,8 @@ export function Leaderboard(props: ILeaderboardProps) {
           <Trophy className="size-4" />
         </span>
         <div>
-          <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">Swiss</p>
-          <h2 className="text-3xl font-bold tracking-normal">Leaderboard</h2>
+          <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">{kicker}</p>
+          <h2 className="text-3xl font-bold tracking-normal">{heading}</h2>
         </div>
       </div>
       {standings.length === 0 ? <p className="mt-6 text-muted-foreground">No players in the draw yet.</p> : null}
@@ -64,6 +84,11 @@ export function Leaderboard(props: ILeaderboardProps) {
                     {column.label}
                   </th>
                 ))}
+                {showElo ? (
+                  <th className="w-14 py-2 pl-2 text-center font-bold" scope="col" title="Domestic Elo">
+                    Elo
+                  </th>
+                ) : null}
                 <th className="w-12 py-2 pl-2 text-center font-bold" scope="col" title="Points">
                   Pts
                 </th>
@@ -75,6 +100,7 @@ export function Leaderboard(props: ILeaderboardProps) {
                   key={standing.name}
                   leader={top > 0 && standing.points === top}
                   rank={index + 1}
+                  showElo={showElo}
                   standing={standing}
                 />
               ))}
@@ -83,17 +109,25 @@ export function Leaderboard(props: ILeaderboardProps) {
         </div>
       ) : null}
       <p className="mt-4 text-sm text-muted-foreground">
-        P played · W won · D drawn · L lost. A win is 1, a draw is 0.5, a bye is 1.{' '}
+        P played · W won · D drawn · L lost. {scoring ?? 'A win is 1, a draw is 0.5, a bye is 1.'}{' '}
         <Link className="font-semibold text-secondary underline underline-offset-4" to="/rules">
           Rules
         </Link>
+        {more ? (
+          <>
+            {' · '}
+            <Link className="font-semibold text-secondary underline underline-offset-4" to={more.to}>
+              {more.label}
+            </Link>
+          </>
+        ) : null}
       </p>
     </section>
   )
 }
 
 function StandingRow(props: IStandingRowProps) {
-  const { standing, rank, leader } = props
+  const { standing, rank, leader, showElo } = props
 
   return (
     <tr className={cn('border-b border-border last:border-b-0', leader && 'bg-muted/30')}>
@@ -109,6 +143,11 @@ function StandingRow(props: IStandingRowProps) {
       <TableStat title="Won" value={standing.wins} />
       <TableStat title="Drawn" value={standing.draws} />
       <TableStat title="Lost" value={standing.losses} />
+      {showElo ? (
+        <td className="py-2.5 pl-2 text-center font-bold tabular-nums" title="Domestic Elo">
+          {standing.elo ?? '—'}
+        </td>
+      ) : null}
       <td className={cn('py-2.5 pl-2 text-center text-base font-bold tabular-nums', leader && 'text-emerald-700')}>
         {tablePoints(standing.points)}
       </td>

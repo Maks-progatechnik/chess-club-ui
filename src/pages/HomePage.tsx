@@ -54,7 +54,11 @@ function SignedInHome() {
       {board.status === 'error' ? <p className="mt-8 text-muted-foreground">{board.message}</p> : null}
       {board.status === 'ready' ? (
         <div className="mt-10 grid items-start gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <Leaderboard standings={board.board.standings} />
+          <Leaderboard
+            more={{ to: '/games', label: 'All games' }}
+            scoring="Match points. A win is 1, a draw is 0.5, a bye is 1. A match still open when the next round is drawn scores 0."
+            standings={board.board.standings}
+          />
           <div className="grid gap-4">
             {latest ? (
               <DrawRound

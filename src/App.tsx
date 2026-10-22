@@ -4,6 +4,7 @@ import { AppHeader } from '@/components/AppHeader.tsx'
 import { ClubAccountProvider } from '@/components/ClubAccount.tsx'
 import { AccountsPage } from '@/pages/AccountsPage.tsx'
 import { DrawPage } from '@/pages/DrawPage.tsx'
+import { GamesPage } from '@/pages/GamesPage.tsx'
 import { HomePage } from '@/pages/HomePage.tsx'
 import { MembersPage } from '@/pages/MembersPage.tsx'
 import { PlayerPage } from '@/pages/PlayerPage.tsx'
@@ -24,6 +25,7 @@ function App() {
           <Route path="/me" element={<AccountsPage />} />
           <Route path="/accounts" element={<Navigate to="/me" replace />} />
           <Route path="/draw" element={<DrawPage />} />
+          <Route path="/games" element={<GamesPage />} />
           <Route path="/rules" element={<RulesPage />} />
           <Route path="/sign-in/*" element={<SignInPage />} />
           <Route path="/sign-up/*" element={<SignUpPage />} />

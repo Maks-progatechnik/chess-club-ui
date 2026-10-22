@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { useClubAccount } from '@/lib/club-account'
 import { DummyUsers } from '@/components/DummyUsers'
 import { buttonVariants } from '@/components/ui/button'
+import { isClubBoard } from '@/lib/board'
+import type { IGameStanding } from '@/lib/board'
 import { clubGet } from '@/lib/club-api'
 import { playerPath } from '@/lib/players'
 import { cn } from '@/lib/utils'
@@ -13,7 +15,7 @@ interface IAccount {
   name: string
   surname: string
   chessCom: string | null
-  elo: number
+  signupName: string | null
 }
 
 interface IAccountsResponse {
@@ -22,15 +24,17 @@ interface IAccountsResponse {
 
 type MembersState =
   | { status: 'loading' }
-  | { status: 'ready'; accounts: IAccount[] }
+  | { status: 'ready'; accounts: IAccount[]; standings: IGameStanding[] }
   | { status: 'error'; message: string }
 
 interface IAccountListProps {
   accounts: IAccount[]
+  standings: IGameStanding[]
 }
 
 interface IAccountRowProps {
   account: IAccount
+  elo: number
 }
 
 export function MembersPage() {
@@ -86,13 +90,17 @@ function AccountRoster() {
           throw new Error('Clerk has not issued a session token yet.')
         }
 
-        const body = await clubGet<IAccountsResponse>('/accounts', token)
+        const [body, board] = await Promise.all([
+          clubGet<IAccountsResponse>('/accounts', token),
+          clubGet<unknown>('/board', token),
+        ])
         if (!Array.isArray(body.accounts)) {
           throw new Error('The club API returned an unexpected account list.')
         }
+        const standings = isClubBoard(board) && Array.isArray(board.gameStandings) ? board.gameStandings : []
 
         if (!cancelled) {
-          setMembers({ status: 'ready', accounts: body.accounts })
+          setMembers({ status: 'ready', accounts: body.accounts, standings })
         }
       } catch (error) {
         if (!cancelled) {
@@ -122,13 +130,13 @@ function AccountRoster() {
       <h1 className="mt-3 text-5xl font-bold leading-tight tracking-normal">Members</h1>
       {members.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading accounts…</p> : null}
       {members.status === 'error' ? <p className="mt-6 text-muted-foreground">{members.message}</p> : null}
-      {members.status === 'ready' ? <AccountList accounts={members.accounts} /> : null}
+      {members.status === 'ready' ? <AccountList accounts={members.accounts} standings={members.standings} /> : null}
     </section>
   )
 }
 
 function AccountList(props: IAccountListProps) {
-  const { accounts } = props
+  const { accounts, standings } = props
 
   if (accounts.length === 0) {
     return <p className="mt-8 text-muted-foreground">No accounts yet.</p>
@@ -137,14 +145,14 @@ function AccountList(props: IAccountListProps) {
   return (
     <ul className="mt-8 border-t">
       {accounts.map((account) => (
-        <AccountRow account={account} key={account.id} />
+        <AccountRow account={account} elo={domesticElo(account, standings)} key={account.id} />
       ))}
     </ul>
   )
 }
 
 function AccountRow(props: IAccountRowProps) {
-  const { account } = props
+  const { account, elo } = props
 
   return (
     <li className="flex items-center justify-between gap-4 border-b py-3.5">
@@ -167,7 +175,26 @@ function AccountRow(props: IAccountRowProps) {
           <p className="text-sm text-muted-foreground">No Chess.com account</p>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">Elo {account.elo}</p>
+      <p className="text-sm text-muted-foreground" title="Domestic Elo from shared games">
+        Elo {elo}
+      </p>
     </li>
   )
+}
+
+const DOMESTIC_START = 1200
+
+function domesticElo(account: IAccount, standings: IGameStanding[]): number {
+  const names = [account.signupName, `${account.name} ${account.surname}`]
+  for (const name of names) {
+    const key = name?.trim().toLowerCase()
+    if (!key) {
+      continue
+    }
+    const standing = standings.find((row) => row.name.trim().toLowerCase() === key)
+    if (standing) {
+      return standing.elo
+    }
+  }
+  return DOMESTIC_START
 }

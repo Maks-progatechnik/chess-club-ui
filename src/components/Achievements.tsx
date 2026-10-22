@@ -71,7 +71,7 @@ export function Achievements(props: IAchievementsProps) {
           title="Most games"
         />
         <AchievementCard
-          caption="Biggest material deficit in a win."
+          caption="Biggest material deficit in a win. A one-move recapture, such as a queen trade, does not count."
           fact={recoveryFact}
           icon={HeartPulse}
           marks={achievements.recovery}

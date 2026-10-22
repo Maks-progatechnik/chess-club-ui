@@ -1,6 +1,6 @@
 export type BoardGroup = 'beginner' | 'advanced'
 export type GameOutcome = 'white' | 'black' | 'draw' | 'unknown'
-export type MatchStatus = 'open' | 'playing' | 'played' | 'split' | 'bye'
+export type MatchStatus = 'open' | 'playing' | 'played' | 'split' | 'bye' | 'skipped'
 
 export interface IBoardGame {
   url: string
@@ -80,11 +80,34 @@ export interface IClubStats {
   openings: IOpeningCount[]
 }
 
+export interface IClubGameRow {
+  url: string
+  white: string
+  black: string
+  outcome: GameOutcome
+  winnerName: string | null
+  playedAt: string | null
+  opening: string | null
+  round: number
+}
+
+export interface IGameStanding {
+  name: string
+  points: number
+  played: number
+  wins: number
+  draws: number
+  losses: number
+  elo: number
+}
+
 export interface IClubBoard {
   draws: IBoardDraw[]
   standings: IStanding[]
   achievements?: IAchievements
   stats?: IClubStats
+  games?: IClubGameRow[]
+  gameStandings?: IGameStanding[]
 }
 
 export interface ISignupPlayer {

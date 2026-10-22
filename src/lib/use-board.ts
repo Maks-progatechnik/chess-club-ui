@@ -17,6 +17,7 @@ interface IUseClubBoard {
   board: BoardState
   roster: ISignupPlayer[]
   addGame: (drawId: number, game: IAddMatchGame) => Promise<string | null>
+  generateRound: (round: number) => Promise<string | null>
 }
 
 export function useClubBoard(): IUseClubBoard {
@@ -78,7 +79,27 @@ export function useClubBoard(): IUseClubBoard {
     }
   }
 
-  return { board, roster, addGame }
+  async function generateRound(round: number): Promise<string | null> {
+    try {
+      const token = await getToken()
+      if (!token) {
+        return 'Clerk has not issued a session token yet.'
+      }
+      await clubPost('/draws/next', token, { round })
+      try {
+        const next = await fetchBoard(token)
+        setRoster(next.roster)
+        setBoard({ status: 'ready', board: next.board })
+      } catch {
+        return 'Saved, but the board did not refresh.'
+      }
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Could not generate the next round.'
+    }
+  }
+
+  return { board, roster, addGame, generateRound }
 }
 
 async function fetchBoard(token: string): Promise<{ board: IClubBoard; roster: ISignupPlayer[] }> {
@@ -87,13 +108,10 @@ async function fetchBoard(token: string): Promise<{ board: IClubBoard; roster: I
     throw new Error('The club API returned an unexpected board.')
   }
 
-  let roster: ISignupPlayer[] = []
   try {
     const sheet = await clubGet<IDummiesResponse>('/dummies', token)
-    roster = Array.isArray(sheet.dummies) ? sheet.dummies : []
+    return { board: body, roster: Array.isArray(sheet.dummies) ? sheet.dummies : [] }
   } catch {
-    roster = []
+    return { board: body, roster: [] }
   }
-
-  return { board: body, roster }
 }

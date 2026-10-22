@@ -58,7 +58,7 @@ export function DrawRound(props: IDrawRoundProps) {
   const [open, setOpen] = useState(defaultOpen)
   const schedule = roundSchedule(draw.round)
   const timing = schedule ? roundTiming(schedule) : null
-  const finished = draw.pairs.filter((pair) => pair.status === 'played' || pair.status === 'split' || pair.status === 'bye').length
+  const finished = draw.pairs.filter((pair) => isSettled(pair.status)).length
   const progress = draw.pairs.length === 0 ? 0 : Math.round((finished / draw.pairs.length) * 100)
   const expanded = !collapsible || open
 
@@ -176,7 +176,7 @@ function MatchCard(props: IMatchCardProps) {
           <GameRows games={pair.games} />
         </div>
       ) : null}
-      {showDetails ? (
+      {showDetails && pair.status !== 'skipped' ? (
         <div className="mt-3 flex justify-end">
           <button
             className={cn(buttonVariants({ size: 'sm', variant: 'outline' }))}
@@ -262,6 +262,10 @@ function CompactScore(props: ICompactScoreProps) {
   const { pair } = props
   const scored = pair.games.some((game) => game.outcome !== 'unknown')
 
+  if (pair.status === 'skipped') {
+    return <p className="shrink-0 text-center text-sm font-bold tracking-[0.14em] text-muted-foreground uppercase">Skip</p>
+  }
+
   return (
     <p className="shrink-0 text-center text-2xl font-bold tabular-nums tracking-normal">
       {scored ? (
@@ -289,7 +293,7 @@ function PlayerSide(props: IPlayerSideProps) {
   const { name, pair, roster, side, align = 'start' } = props
   const points = side === 'white' ? pair.whitePoints : pair.blackPoints
   const winner = pair.winner !== null && pair.winner.toLowerCase() === name.toLowerCase()
-  const showPoints = pair.status === 'played' || pair.status === 'split' || pair.status === 'bye'
+  const showPoints = pair.status === 'played' || pair.status === 'split' || pair.status === 'bye' || pair.status === 'skipped'
   const player = roster.find((row) => row.name.toLowerCase() === name.toLowerCase())
   const note = playerNote(player)
 
@@ -341,6 +345,10 @@ function ScoreBlock(props: IScoreBlockProps) {
 
 function StatusBadge(props: IStatusBadgeProps) {
   const { pair } = props
+
+  if (pair.status === 'skipped') {
+    return <span className="text-xs font-bold tracking-[0.14em] text-muted-foreground uppercase">Skipped</span>
+  }
 
   if (pair.status === 'played' || pair.status === 'split' || pair.status === 'bye' || pair.games.length > 0) {
     const label = pair.status === 'played' || pair.status === 'split' || pair.status === 'bye' ? 'Played' : 'Shared'
@@ -530,7 +538,14 @@ function drawCount(pair: IBoardPair): number {
   return pair.games.filter((game) => game.outcome === 'draw').length
 }
 
+function isSettled(status: IBoardPair['status']): boolean {
+  return status === 'played' || status === 'split' || status === 'bye' || status === 'skipped'
+}
+
 function leadText(pair: IBoardPair): string {
+  if (pair.status === 'skipped') {
+    return 'Skipped · 0 pts each'
+  }
   if (pair.status === 'split') {
     return `Split · ${pointLabel(pair.whitePoints)} each`
   }

@@ -1,6 +1,7 @@
 import { Show } from '@clerk/react'
 import { Link } from 'react-router-dom'
 import { DrawRound } from '@/components/DrawRound'
+import { NextRound } from '@/components/NextRound'
 import { buttonVariants } from '@/components/ui/button'
 import { useClubBoard } from '@/lib/use-board'
 import { cn } from '@/lib/utils'
@@ -31,7 +32,7 @@ function SignedOutNotice() {
 }
 
 function DrawBoard() {
-  const { board, roster, addGame } = useClubBoard()
+  const { board, roster, addGame, generateRound } = useClubBoard()
 
   return (
     <section>
@@ -42,6 +43,11 @@ function DrawBoard() {
       </p>
       {board.status === 'loading' ? <p className="mt-8 text-muted-foreground">Checking shared games…</p> : null}
       {board.status === 'error' ? <p className="mt-8 text-muted-foreground">{board.message}</p> : null}
+      {board.status === 'ready' ? (
+        <div className="mt-8">
+          <NextRound drawCount={board.board.draws.length} onGenerate={generateRound} />
+        </div>
+      ) : null}
       {board.status === 'ready' && board.board.draws.length === 0 ? (
         <p className="mt-8 text-muted-foreground">No saved draws.</p>
       ) : null}
