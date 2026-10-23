@@ -1,4 +1,3 @@
-export type BoardGroup = 'beginner' | 'advanced'
 export type GameOutcome = 'white' | 'black' | 'draw' | 'unknown'
 export type MatchStatus = 'open' | 'playing' | 'played' | 'split' | 'bye' | 'skipped'
 
@@ -13,7 +12,6 @@ export interface IBoardGame {
 }
 
 export interface IBoardPair {
-  group: BoardGroup
   white: string
   black: string | null
   across: boolean
@@ -118,7 +116,6 @@ export interface ISignupPlayer {
 }
 
 export interface IAddMatchGame {
-  group: BoardGroup
   white: string
   black: string
   url: string

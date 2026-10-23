@@ -2,7 +2,6 @@ import { Show, useAuth } from '@clerk/react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useClubAccount } from '@/lib/club-account'
-import { DummyUsers } from '@/components/DummyUsers'
 import { buttonVariants } from '@/components/ui/button'
 import { isClubBoard } from '@/lib/board'
 import type { IGameStanding } from '@/lib/board'
@@ -63,15 +62,7 @@ function SignedOutNotice() {
 }
 
 function MemberLists() {
-  const { state } = useClubAccount()
-  const canClaim = state.status === 'ready' && state.account !== null
-
-  return (
-    <>
-      <AccountRoster />
-      <DummyUsers canClaim={canClaim} />
-    </>
-  )
+  return <AccountRoster />
 }
 
 function AccountRoster() {

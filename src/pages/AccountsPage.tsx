@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { AccountForm } from '@/components/AccountForm'
 import { MyGames } from '@/components/MyGames'
 import { useClubAccount } from '@/lib/club-account'
-import { playerPath } from '@/lib/players'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -48,18 +47,6 @@ function MyAccount() {
         <p className="mt-4 text-lg text-muted-foreground">
           This is stored in the club database for the Clerk user who is signed in. Elo starts at 1200.
         </p>
-        {account?.signupName ? (
-          <p className="mt-2 text-muted-foreground">
-            Matched to{' '}
-            <Link className="text-secondary underline underline-offset-4" to={playerPath(account.signupName)}>
-              {account.signupName}
-            </Link>{' '}
-            on the signup sheet.
-          </p>
-        ) : null}
-        {account && !account.signupName ? (
-          <p className="mt-2 text-muted-foreground">Not matched to the signup sheet yet. Mark your row under Members.</p>
-        ) : null}
         {state.status === 'loading' ? <p className="mt-6 text-muted-foreground">Loading your account…</p> : null}
         {state.status === 'error' ? <p className="mt-6 text-muted-foreground">{state.message}</p> : null}
         {state.status === 'ready' ? (

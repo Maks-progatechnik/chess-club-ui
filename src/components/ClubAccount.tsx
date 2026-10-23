@@ -23,7 +23,6 @@ export function ClubAccountProvider(props: IClubAccountProviderProps) {
   const { children } = props
   const { getToken, isLoaded, isSignedIn, userId } = useAuth()
   const [stored, setStored] = useState<IStoredAccount | null>(null)
-  const [claimVersion, setClaimVersion] = useState(0)
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId) {
@@ -57,7 +56,7 @@ export function ClubAccountProvider(props: IClubAccountProviderProps) {
     return () => {
       cancelled = true
     }
-  }, [claimVersion, getToken, isLoaded, isSignedIn, userId])
+  }, [getToken, isLoaded, isSignedIn, userId])
 
   async function saveAccount(values: IAccountFormValues): Promise<string | null> {
     if (!userId) {
@@ -77,21 +76,16 @@ export function ClubAccountProvider(props: IClubAccountProviderProps) {
         chessCom: values.chessCom.trim() || null,
       })
       setStored({ userId: signedInUserId, state: { status: 'ready', account: saved } })
-      setClaimVersion((version) => version + 1)
       return null
     } catch (error) {
       return error instanceof Error ? error.message : 'Could not save this account.'
     }
   }
 
-  function noteClaimed() {
-    setClaimVersion((version) => version + 1)
-  }
-
   const state = accountState(isLoaded, isSignedIn, userId, stored)
 
   return (
-    <ClubAccountContext.Provider value={{ state, claimVersion, saveAccount, noteClaimed }}>
+    <ClubAccountContext.Provider value={{ state, saveAccount }}>
       {children}
     </ClubAccountContext.Provider>
   )

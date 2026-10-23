@@ -9,8 +9,19 @@ export type BoardState =
   | { status: 'ready'; board: IClubBoard }
   | { status: 'error'; message: string }
 
-interface IDummiesResponse {
-  dummies: ISignupPlayer[]
+interface IRosterAccount {
+  id: number
+  name: string
+  surname: string
+  chessCom: string | null
+}
+
+interface IAccountsResponse {
+  accounts: IRosterAccount[]
+}
+
+interface IAccountResponse {
+  account: IRosterAccount | null
 }
 
 interface IUseClubBoard {
@@ -61,7 +72,6 @@ export function useClubBoard(): IUseClubBoard {
         return 'Clerk has not issued a session token yet.'
       }
       await clubPost(`/draws/${drawId}/games`, token, {
-        group: game.group,
         white: game.white,
         black: game.black,
         url: game.url,
@@ -109,9 +119,25 @@ async function fetchBoard(token: string): Promise<{ board: IClubBoard; roster: I
   }
 
   try {
-    const sheet = await clubGet<IDummiesResponse>('/dummies', token)
-    return { board: body, roster: Array.isArray(sheet.dummies) ? sheet.dummies : [] }
+    const [accountsBody, meBody] = await Promise.all([
+      clubGet<IAccountsResponse>('/accounts', token),
+      clubGet<IAccountResponse>('/accounts/me', token),
+    ])
+    const mine = meBody.account?.id ?? null
+    const roster = Array.isArray(accountsBody.accounts)
+      ? accountsBody.accounts.map((account) => toRosterPlayer(account, mine))
+      : []
+    return { board: body, roster }
   } catch {
     return { board: body, roster: [] }
+  }
+}
+
+function toRosterPlayer(account: IRosterAccount, mine: number | null): ISignupPlayer {
+  return {
+    name: `${account.name} ${account.surname}`.trim(),
+    chessCom: account.chessCom,
+    claimed: true,
+    mine: account.id === mine,
   }
 }

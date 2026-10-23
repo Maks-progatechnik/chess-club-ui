@@ -33,7 +33,6 @@ export const rounds: ITournamentRound[] = [
 
 export const stages: ITournamentStage[] = [
   { id: 'registration', title: 'Реєстрація' },
-  { id: 'groups', title: 'Поділ на групи' },
   { id: 'draw', title: 'Жеребкування' },
   { id: 'matches', title: 'Матчі' },
   { id: 'scoring', title: 'Підрахунок результатів' },

@@ -8,7 +8,6 @@ import {
   Scale,
   Swords,
   Timer,
-  Users,
   UserRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -30,7 +29,6 @@ interface IDeadlineRowProps {
 
 const stageIcons: Record<string, LucideIcon> = {
   registration: UserRound,
-  groups: Users,
   draw: Shuffle,
   matches: Swords,
   scoring: ClipboardCheck,

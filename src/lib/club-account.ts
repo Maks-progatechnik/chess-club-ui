@@ -18,9 +18,7 @@ export type ClubAccountState =
 
 export interface IClubAccountContext {
   state: ClubAccountState
-  claimVersion: number
   saveAccount: (values: IAccountFormValues) => Promise<string | null>
-  noteClaimed: () => void
 }
 
 export const ClubAccountContext = createContext<IClubAccountContext | null>(null)

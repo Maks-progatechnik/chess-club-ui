@@ -1,39 +1,21 @@
 import { useUser } from '@clerk/react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { AccountForm } from '@/components/AccountForm'
 import type { IAccountFormValues } from '@/components/AccountForm'
 import { useClubAccount } from '@/lib/club-account'
-import { DummyUsers } from '@/components/DummyUsers'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 export function AccountSetup() {
   const { state, saveAccount } = useClubAccount()
-  const [marking, setMarking] = useState(false)
-  const account = state.status === 'ready' ? state.account : null
-  const showForm = state.status === 'ready' && !account
-  const showSheet = Boolean(account) && marking
+  const showForm = state.status === 'ready' && !state.account
 
-  if (!showForm && !showSheet) {
+  if (!showForm) {
     return null
   }
 
   return (
     <SetupDialog>
-      {showForm ? (
-        <InitForm
-          onSave={async (values) => {
-            const message = await saveAccount(values)
-            if (!message) {
-              setMarking(true)
-            }
-            return message
-          }}
-        />
-      ) : (
-        <MarkSheet onDone={() => setMarking(false)} />
-      )}
+      <InitForm onSave={saveAccount} />
     </SetupDialog>
   )
 }
@@ -94,31 +76,6 @@ function InitForm(props: IInitFormProps) {
           chessCom: '',
         }}
       />
-    </section>
-  )
-}
-
-interface IMarkSheetProps {
-  onDone: () => void
-}
-
-function MarkSheet(props: IMarkSheetProps) {
-  const { onDone } = props
-  const [matched, setMatched] = useState(false)
-
-  return (
-    <section>
-      <DummyUsers canClaim compact onClaimed={onDone} onMatched={setMatched} titleId="account-setup-title" />
-      <div className="mt-6 flex flex-wrap gap-3">
-        {matched ? (
-          <button className={cn(buttonVariants({ size: 'lg' }), 'hover:bg-secondary')} onClick={onDone} type="button">
-            Confirm
-          </button>
-        ) : null}
-        <button className={cn(buttonVariants({ size: 'lg', variant: 'outline' }))} onClick={onDone} type="button">
-          I'm not on this list
-        </button>
-      </div>
     </section>
   )
 }

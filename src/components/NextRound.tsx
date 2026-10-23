@@ -32,7 +32,8 @@ export function NextRound(props: INextRoundProps) {
       <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">Round {roundNumber}</p>
       <h2 className="mt-2 text-3xl font-bold tracking-normal">Next pairings</h2>
       <p className="mt-3 text-sm text-muted-foreground">
-        Swiss pairings from match points, kept inside each group. A match that is not finished scores 0 for both
+        Swiss pairings from match points. Players on the same score are drawn at random. A player who lost the match
+        but won a game plays a random player from the score above. A match that is not finished scores 0 for both
         players. Round {roundNumber} can be generated once.
       </p>
       <button

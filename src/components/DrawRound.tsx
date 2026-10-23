@@ -107,10 +107,9 @@ export function DrawRound(props: IDrawRoundProps) {
           pair.black ? (
             <MatchCard
               compact={compactMatches}
-              key={`${pair.group}-${pair.white}-${pair.black}`}
+              key={`${pair.white}-${pair.black}`}
               onAddGame={(url) =>
                 onAddGame({
-                  group: pair.group,
                   white: pair.white,
                   black: pair.black ?? '',
                   url,
@@ -120,7 +119,7 @@ export function DrawRound(props: IDrawRoundProps) {
               roster={roster}
             />
           ) : (
-            <ByeCard key={`${pair.group}-${pair.white}-bye`} pair={pair} roster={roster} />
+            <ByeCard key={`${pair.white}-bye`} pair={pair} roster={roster} />
           ),
         )}
       </div> : null}
