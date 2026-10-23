@@ -24,11 +24,33 @@ interface IAccountResponse {
   account: IRosterAccount | null
 }
 
+export interface ITestSide {
+  name: string
+  points: number
+  gameWins: number
+}
+
+export interface ITestPairing {
+  white: string
+  black: string | null
+  kind: 'same' | 'up' | 'down' | 'bye'
+  rematch: boolean
+  reason: string
+  whitePlayer: ITestSide
+  blackPlayer: ITestSide | null
+}
+
+interface IPreviewResponse {
+  round: number
+  pairs: ITestPairing[]
+}
+
 interface IUseClubBoard {
   board: BoardState
   roster: ISignupPlayer[]
   addGame: (drawId: number, game: IAddMatchGame) => Promise<string | null>
   generateRound: (round: number) => Promise<string | null>
+  previewRound: (round: number) => Promise<ITestPairing[] | string>
 }
 
 export function useClubBoard(): IUseClubBoard {
@@ -109,7 +131,23 @@ export function useClubBoard(): IUseClubBoard {
     }
   }
 
-  return { board, roster, addGame, generateRound }
+  async function previewRound(round: number): Promise<ITestPairing[] | string> {
+    try {
+      const token = await getToken()
+      if (!token) {
+        return 'Clerk has not issued a session token yet.'
+      }
+      const preview = await clubPost<IPreviewResponse>('/draws/preview', token, { round })
+      if (!Array.isArray(preview.pairs)) {
+        return 'The club API returned an unexpected pairing.'
+      }
+      return preview.pairs
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Could not build a test pairing.'
+    }
+  }
+
+  return { board, roster, addGame, generateRound, previewRound }
 }
 
 async function fetchBoard(token: string): Promise<{ board: IClubBoard; roster: ISignupPlayer[] }> {

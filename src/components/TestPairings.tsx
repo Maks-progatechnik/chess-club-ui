@@ -1,0 +1,327 @@
+import { ArrowDown, ArrowUp, Repeat } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { buttonVariants } from '@/components/ui/button'
+import type { ITestPairing, ITestSide } from '@/lib/use-board'
+import { cn } from '@/lib/utils'
+
+interface ITestPairingsProps {
+  drawCount: number
+  onPreview: (round: number) => Promise<ITestPairing[] | string>
+}
+
+interface ITestPairingsModalProps {
+  round: number
+  pairs: ITestPairing[]
+  pending: boolean
+  message: string | null
+  onAgain: () => void
+  onClose: () => void
+}
+
+interface IKindStyle {
+  card: string
+  dot: string
+  label: string
+}
+
+interface IPairCardProps {
+  pair: ITestPairing
+}
+
+interface IPlayerTileProps {
+  side: ITestSide
+  color: 'white' | 'black'
+  move: 'up' | 'down' | null
+  align: 'start' | 'end'
+}
+
+interface IWinPipsProps {
+  count: number
+  align: 'start' | 'end'
+}
+
+interface IScoreKeyProps {
+  scores: number[]
+}
+
+type PairKind = ITestPairing['kind']
+type MoveMark = 'up' | 'down' | null
+
+const POINT_TONES = [
+  'bg-[#ddd9d3]',
+  'bg-[#c9daf5]',
+  'bg-[#b7d7b0]',
+  'bg-[#9fd9cf]',
+  'bg-[#f3d19a]',
+  'bg-[#f0c0a4]',
+  'bg-[#e7aeb8]',
+  'bg-[#d4b8ea]',
+  'bg-[#c5c9a4]',
+]
+
+const KIND_STYLES: Record<PairKind, IKindStyle> = {
+  same: { card: 'bg-[#e7f2e4]', dot: 'bg-[#3d6b45]', label: 'Same score' },
+  up: { card: 'bg-[#f8ecd4]', dot: 'bg-[#a16207]', label: 'Played up' },
+  down: { card: 'bg-[#e4eef8]', dot: 'bg-[#1d4e89]', label: 'Played down' },
+  bye: { card: 'bg-[#eceae6]', dot: 'bg-[#5e6663]', label: 'Bye' },
+}
+
+const KIND_ORDER: PairKind[] = ['same', 'up', 'down', 'bye']
+
+export function TestPairings(props: ITestPairingsProps) {
+  const { drawCount, onPreview } = props
+  const [searchParams] = useSearchParams()
+  const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false)
+  const [pairs, setPairs] = useState<ITestPairing[]>([])
+  const [message, setMessage] = useState<string | null>(null)
+  const round = drawCount + 1
+
+  if (!searchParams.has('testing') || round < 2) {
+    return null
+  }
+
+  async function load() {
+    setPending(true)
+    setMessage(null)
+    const result = await onPreview(round)
+    if (typeof result === 'string') {
+      setPairs([])
+      setMessage(result)
+    } else {
+      setPairs(result)
+    }
+    setPending(false)
+    setOpen(true)
+  }
+
+  return (
+    <>
+      <button
+        className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'mt-5')}
+        disabled={pending}
+        onClick={() => void load()}
+        type="button"
+      >
+        {pending && !open ? 'Pairing…' : 'Test pairings'}
+      </button>
+      {open ? (
+        <TestPairingsModal
+          message={message}
+          onAgain={() => void load()}
+          onClose={() => setOpen(false)}
+          pairs={pairs}
+          pending={pending}
+          round={round}
+        />
+      ) : null}
+    </>
+  )
+}
+
+function TestPairingsModal(props: ITestPairingsModalProps) {
+  const { round, pairs, pending, message, onAgain, onClose } = props
+  const scores = scoreList(pairs)
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        aria-labelledby="test-pairings-title"
+        aria-modal="true"
+        className="w-full max-w-3xl rounded-2xl border border-border bg-background p-6 text-foreground"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <p className="text-xs font-bold tracking-[0.14em] text-secondary uppercase">Not saved</p>
+        <h2 className="mt-3 text-3xl font-bold tracking-normal" id="test-pairings-title">
+          Round {round} test
+        </h2>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {KIND_ORDER.map((kind) => (
+            <span className={cn('inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold', KIND_STYLES[kind].card)} key={kind}>
+              <span className={cn('size-2.5 rounded-full', KIND_STYLES[kind].dot)} />
+              {KIND_STYLES[kind].label}
+            </span>
+          ))}
+        </div>
+        {scores.length > 0 ? <ScoreKey scores={scores} /> : null}
+        {pairs.length > 0 ? (
+          <ul className="mt-4 grid max-h-[54vh] gap-3 overflow-y-auto pr-1">
+            {pairs.map((pair) => (
+              <PairCard key={`${pair.white}-${pair.black}`} pair={pair} />
+            ))}
+          </ul>
+        ) : null}
+        {message ? <p className="mt-4 text-secondary">{message}</p> : null}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            className={cn(buttonVariants({ size: 'lg' }), 'hover:bg-secondary')}
+            disabled={pending}
+            onClick={onAgain}
+            type="button"
+          >
+            {pending ? 'Pairing…' : 'Draw again'}
+          </button>
+          <button className={cn(buttonVariants({ size: 'lg', variant: 'outline' }))} onClick={onClose} type="button">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ScoreKey(props: IScoreKeyProps) {
+  const { scores } = props
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="text-xs font-bold tracking-[0.14em] text-muted-foreground uppercase">Points</span>
+      {scores.map((score) => (
+        <span className={cn('grid h-7 min-w-7 place-items-center rounded-lg px-1.5 text-sm font-bold', pointsTone(score))} key={score}>
+          {formatPoints(score)}
+        </span>
+      ))}
+      <span className="text-xs font-bold tracking-[0.14em] text-muted-foreground uppercase">Squares = game wins</span>
+    </div>
+  )
+}
+
+function PairCard(props: IPairCardProps) {
+  const { pair } = props
+  const style = KIND_STYLES[pair.kind]
+
+  return (
+    <li className={cn('rounded-2xl p-3', style.card)}>
+      <div className="mb-2 flex items-center gap-2">
+        <span className={cn('size-2.5 rounded-full', style.dot)} />
+        <span className="text-xs font-bold tracking-[0.12em] uppercase">{style.label}</span>
+        {pair.rematch ? (
+          <span className="ml-auto inline-flex items-center gap-1 text-xs font-bold tracking-[0.12em] uppercase">
+            <Repeat className="size-3.5" />
+            Again
+          </span>
+        ) : null}
+      </div>
+      <div className={cn('grid items-stretch gap-2', pair.blackPlayer ? 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]' : 'grid-cols-1')}>
+        <PlayerTile
+          align="start"
+          color="white"
+          move={moveOf(pair.kind, pair.whitePlayer, pair.blackPlayer)}
+          side={pair.whitePlayer}
+        />
+        {pair.blackPlayer ? (
+          <>
+            <span className="self-center text-xs font-bold tracking-[0.14em] uppercase">vs</span>
+            <PlayerTile
+              align="end"
+              color="black"
+              move={moveOf(pair.kind, pair.blackPlayer, pair.whitePlayer)}
+              side={pair.blackPlayer}
+            />
+          </>
+        ) : null}
+      </div>
+      <p className="sr-only">{pair.reason}</p>
+    </li>
+  )
+}
+
+function PlayerTile(props: IPlayerTileProps) {
+  const { side, color, move, align } = props
+
+  return (
+    <div className={cn('rounded-xl bg-card px-3 py-3', align === 'end' && 'text-right')}>
+      <div className={cn('flex items-center gap-2', align === 'end' && 'flex-row-reverse')}>
+        <span
+          className={cn('size-3 shrink-0 rounded-full border border-foreground', color === 'white' ? 'bg-white' : 'bg-foreground')}
+          aria-label={color === 'white' ? 'White' : 'Black'}
+        />
+        <span className="truncate font-bold">{side.name}</span>
+        {move === 'up' ? <ArrowUp aria-label="Played up" className="size-4 shrink-0" /> : null}
+        {move === 'down' ? <ArrowDown aria-label="Played down" className="size-4 shrink-0" /> : null}
+      </div>
+      <div className={cn('mt-3 flex items-end gap-3', align === 'end' && 'flex-row-reverse')}>
+        <div>
+          <div className={cn('grid size-12 place-items-center rounded-xl text-xl font-bold', pointsTone(side.points))}>
+            {formatPoints(side.points)}
+          </div>
+          <p className="mt-1 text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">Points</p>
+        </div>
+        <div className={cn('flex flex-col', align === 'end' ? 'items-end' : 'items-start')}>
+          <WinPips align={align} count={side.gameWins} />
+          <p className="mt-1 text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">Games</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function WinPips(props: IWinPipsProps) {
+  const { count, align } = props
+  const shown = Math.min(Math.max(count, 1), 8)
+  const extra = count > 8 ? count - 8 : 0
+
+  return (
+    <span
+      aria-label={count === 1 ? '1 game win' : `${count} game wins`}
+      className={cn('flex max-w-24 flex-wrap items-center gap-1', align === 'end' && 'justify-end')}
+    >
+      {Array.from({ length: shown }, (_, index) => (
+        <span
+          className={cn('size-2.5 rounded-sm', index < count ? 'bg-foreground' : 'border border-foreground/30')}
+          key={index}
+        />
+      ))}
+      {extra > 0 ? <span className="text-xs font-bold">+{extra}</span> : null}
+    </span>
+  )
+}
+
+function scoreList(pairs: ITestPairing[]): number[] {
+  const scores = new Set<number>()
+  for (const pair of pairs) {
+    scores.add(pair.whitePlayer.points)
+    if (pair.blackPlayer) {
+      scores.add(pair.blackPlayer.points)
+    }
+  }
+  return [...scores].sort((left, right) => right - left)
+}
+
+function moveOf(kind: PairKind, side: ITestSide, other: ITestSide | null): MoveMark {
+  if (!other) {
+    return null
+  }
+  if (kind === 'up' && side.points < other.points) {
+    return 'up'
+  }
+  if (kind === 'down' && side.points > other.points) {
+    return 'down'
+  }
+  return null
+}
+
+function pointsTone(points: number): string {
+  const index = Math.max(0, Math.round(points * 2))
+  return POINT_TONES[index] ?? POINT_TONES[POINT_TONES.length - 1] ?? 'bg-muted'
+}
+
+function formatPoints(points: number): string {
+  return Number.isInteger(points) ? String(points) : points.toFixed(1)
+}
