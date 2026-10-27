@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { buttonVariants } from '@/components/ui/button'
+import { isOrganizer, useClubAccount } from '@/lib/club-account'
 import { rounds } from '@/lib/tournament'
 import { cn } from '@/lib/utils'
 
@@ -10,11 +11,12 @@ interface INextRoundProps {
 
 export function NextRound(props: INextRoundProps) {
   const { drawCount, onGenerate } = props
+  const { state } = useClubAccount()
   const round = nextRoundNumber(drawCount)
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  if (round === null) {
+  if (round === null || !isOrganizer(state)) {
     return null
   }
   const roundNumber = round

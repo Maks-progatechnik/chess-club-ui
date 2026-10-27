@@ -1,6 +1,8 @@
 import { ClerkLoading, Show, UserButton } from '@clerk/react'
 import { Link, NavLink } from 'react-router-dom'
 import { buttonVariants } from '@/components/ui/button'
+import { useClubAccount } from '@/lib/club-account'
+import { setViewingAsMember } from '@/lib/club-api'
 import { cn } from '@/lib/utils'
 
 interface INavItemProps {
@@ -35,10 +37,35 @@ export function AppHeader() {
           <NavItem label="Members" to="/members" />
           <NavItem label="Draw" to="/draw" />
           <NavItem label="Games" to="/games" />
+          <RoleSwitch />
           <UserButton />
         </Show>
       </nav>
     </header>
+  )
+}
+
+function RoleSwitch() {
+  const { state } = useClubAccount()
+  if (state.status !== 'ready' || !state.canViewAsMember) {
+    return null
+  }
+  const asMember = state.role === 'member'
+
+  function toggle() {
+    setViewingAsMember(!asMember)
+    window.location.reload()
+  }
+
+  return (
+    <button
+      className={cn(buttonVariants({ size: 'sm', variant: 'outline' }))}
+      onClick={toggle}
+      title="Organizer test switch. Only you see it."
+      type="button"
+    >
+      {asMember ? 'Viewing as member' : 'Viewing as organizer'}
+    </button>
   )
 }
 

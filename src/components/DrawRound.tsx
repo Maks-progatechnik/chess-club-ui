@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { GameBoard } from '@/components/GameBoard'
 import { buttonVariants } from '@/components/ui/button'
 import { pointLabel } from '@/lib/board'
+import { canAddMatchGame, useClubAccount } from '@/lib/club-account'
 import type { IAddMatchGame, IBoardDraw, IBoardGame, IBoardPair, ISignupPlayer } from '@/lib/board'
 import { playerPath } from '@/lib/players'
 import { roundSchedule, roundTiming } from '@/lib/tournament'
@@ -129,6 +130,7 @@ export function DrawRound(props: IDrawRoundProps) {
 
 function MatchCard(props: IMatchCardProps) {
   const { pair, roster, onAddGame, compact = false } = props
+  const { state } = useClubAccount()
   const [detailsOpen, setDetailsOpen] = useState(!compact)
   const [modalOpen, setModalOpen] = useState(false)
   const black = pair.black ?? ''
@@ -175,7 +177,7 @@ function MatchCard(props: IMatchCardProps) {
           <GameRows games={pair.games} />
         </div>
       ) : null}
-      {showDetails && pair.status !== 'skipped' ? (
+      {showDetails && pair.status !== 'skipped' && canAddMatchGame(state, pair.white, black) ? (
         <div className="mt-3 flex justify-end">
           <button
             className={cn(buttonVariants({ size: 'sm', variant: 'outline' }))}
