@@ -1,16 +1,22 @@
 import { Repeat, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
+import { DrawReveal } from '@/components/DrawReveal'
 import { buttonVariants } from '@/components/ui/button'
 import { isOrganizer, useClubAccount } from '@/lib/club-account'
 import { rounds } from '@/lib/tournament'
-import type { IGenerateChoice, ITestPairing } from '@/lib/use-board'
+import type { GenerateResult, IDrawReveal, IGenerateChoice, ITestPairing } from '@/lib/use-board'
 import { cn } from '@/lib/utils'
 
 type DrawMode = 'score' | 'random'
 
 interface INextRoundProps {
   drawCount: number
-  onGenerate: (round: number, choice?: IGenerateChoice) => Promise<ITestPairing[] | string | null>
+  onGenerate: (round: number, choice?: IGenerateChoice) => Promise<GenerateResult>
+}
+
+interface IRevealState {
+  reveal: IDrawReveal
+  grouped: boolean
 }
 
 interface IProposal {
@@ -32,9 +38,14 @@ export function NextRound(props: INextRoundProps) {
   const [pending, setPending] = useState<DrawMode | 'keep' | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [proposal, setProposal] = useState<IProposal | null>(null)
+  const [reveal, setReveal] = useState<IRevealState | null>(null)
+  // Saving the round moves the page on, so the reveal stays here even once this card has nothing to draw.
+  const revealModal = reveal ? (
+    <DrawReveal grouped={reveal.grouped} onClose={() => setReveal(null)} reveal={reveal.reveal} saved />
+  ) : null
 
   if (round === null || !isOrganizer(state)) {
-    return null
+    return revealModal
   }
   const roundNumber = round
 
@@ -42,11 +53,15 @@ export function NextRound(props: INextRoundProps) {
     setPending(kept ? 'keep' : mode)
     setMessage(null)
     const result = await onGenerate(roundNumber, { mode, kept })
-    if (Array.isArray(result)) {
-      setProposal({ mode, pairs: result })
+    if (result.status === 'confirm') {
+      setProposal({ mode, pairs: result.pairs })
+    } else if (result.status === 'saved') {
+      setProposal(null)
+      setMessage(result.notice)
+      setReveal({ reveal: result.reveal, grouped: mode === 'score' })
     } else {
       setProposal(null)
-      setMessage(result)
+      setMessage(result.message)
     }
     setPending(null)
   }
@@ -78,6 +93,7 @@ export function NextRound(props: INextRoundProps) {
         </button>
       )}
       {message ? <p className="mt-3 text-sm text-secondary">{message}</p> : null}
+      {revealModal}
     </section>
   )
 }
