@@ -62,7 +62,7 @@ interface ISeatProps {
 
 const FLIGHT_MS = 750
 const MOVE_MS = 480
-const SEAT_DOTS: Record<PieceColor, string> = { white: 'bg-white', black: 'bg-foreground' }
+const SEAT_DOTS: Record<PieceColor, string> = { white: 'bg-white', black: 'bg-foreground dark:bg-background' }
 
 export function DrawReveal(props: IDrawRevealProps) {
   const { reveal, grouped, saved, onClose } = props

@@ -1,13 +1,13 @@
 const POINT_TONES = [
-  'bg-[#ddd9d3]',
-  'bg-[#c9daf5]',
-  'bg-[#b7d7b0]',
-  'bg-[#9fd9cf]',
-  'bg-[#f3d19a]',
-  'bg-[#f0c0a4]',
-  'bg-[#e7aeb8]',
-  'bg-[#d4b8ea]',
-  'bg-[#c5c9a4]',
+  'bg-[#ddd9d3] dark:bg-[#3d3a36]',
+  'bg-[#c9daf5] dark:bg-[#2b3a55]',
+  'bg-[#b7d7b0] dark:bg-[#2f4a2b]',
+  'bg-[#9fd9cf] dark:bg-[#1f4a44]',
+  'bg-[#f3d19a] dark:bg-[#55421f]',
+  'bg-[#f0c0a4] dark:bg-[#5a3626]',
+  'bg-[#e7aeb8] dark:bg-[#57303a]',
+  'bg-[#d4b8ea] dark:bg-[#43335a]',
+  'bg-[#c5c9a4] dark:bg-[#43462c]',
 ]
 
 export function pointsTone(points: number): string {
