@@ -45,11 +45,24 @@ interface IPreviewResponse {
   pairs: ITestPairing[]
 }
 
+interface IGenerateResponse {
+  rematch?: boolean
+  pairs?: ITestPairing[]
+}
+
+// 'score' pairs by points; 'random' ignores points. Kept pairs are saved as they are.
+export interface IGenerateChoice {
+  mode?: 'score' | 'random'
+  kept?: ITestPairing[]
+}
+
 interface IUseClubBoard {
   board: BoardState
   roster: ISignupPlayer[]
   addGame: (drawId: number, game: IAddMatchGame) => Promise<string | null>
-  generateRound: (round: number) => Promise<string | null>
+  // Returns the proposed pairs when the organizer has to confirm them: they repeat an old match, or they
+  // are a random draw.
+  generateRound: (round: number, choice?: IGenerateChoice) => Promise<ITestPairing[] | string | null>
   previewRound: (round: number) => Promise<ITestPairing[] | string>
 }
 
@@ -111,13 +124,18 @@ export function useClubBoard(): IUseClubBoard {
     }
   }
 
-  async function generateRound(round: number): Promise<string | null> {
+  async function generateRound(round: number, choice: IGenerateChoice = {}): Promise<ITestPairing[] | string | null> {
     try {
       const token = await getToken()
       if (!token) {
         return 'Clerk has not issued a session token yet.'
       }
-      await clubPost('/draws/next', token, { round })
+      const { kept, mode = 'score' } = choice
+      const body = kept ? { round, pairs: kept.map((pair) => ({ white: pair.white, black: pair.black })) } : { round, mode }
+      const generated = await clubPost<IGenerateResponse>('/draws/next', token, body)
+      if (generated.rematch) {
+        return Array.isArray(generated.pairs) ? generated.pairs : 'The club API returned an unexpected pairing.'
+      }
       try {
         const next = await fetchBoard(token)
         setRoster(next.roster)
